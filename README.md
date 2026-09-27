@@ -70,6 +70,8 @@ docs/                  preview + gameplay screenshots
 
 The table is assembled at runtime from `assets/models/*.glb` and `layout.json` marker positions. The playfield is tilted **6.5°** about X (top / −Z raised). Physics uses **Jolt**, **180 Hz** ticks, and **continuous collision detection** on the ball (real 27 mm scale).
 
+Launch is a charged velocity impulse (the plunger mesh is animated visually). Outer walls / inlanes use primitive boxes; maze walls use the imported trimesh. No audio in this MVP. Headless runs may log a missing ALSA device and fall back to the dummy audio driver.
+
 Regenerate all models (from repo root):
 
 ```sh
