@@ -17,18 +17,22 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-	left_flipper = _add_button(&"flipper_left", "L", Color(0.95, 0.55, 0.12, 0.95), 0.015, 0.48, 0.20, 0.96)
-	right_flipper = _add_button(&"flipper_right", "R", Color(0.95, 0.55, 0.12, 0.95), 0.80, 0.48, 0.985, 0.96)
-	launch = _add_button(&"plunger", "LAUNCH", Color(0.2, 0.75, 0.45, 0.95), 0.80, 0.30, 0.985, 0.46)
-	pause_btn = _add_button(&"pause", "PAUSE", Color(0.7, 0.75, 0.85, 0.9), 0.015, 0.04, 0.13, 0.14)
-	restart_btn = _add_button(&"restart", "RESTART", Color(0.85, 0.35, 0.3, 0.9), 0.14, 0.04, 0.27, 0.14)
+	# Compact edge layout so the wide table can use almost the full landscape
+	# width. Buttons are semi-transparent and overlap only the table's dead
+	# corners (pocket fills behind the inlane guides / outside the chamfers).
+	left_flipper = _add_button(&"flipper_left", "L", Color(0.95, 0.55, 0.12, 0.95), 0.0, 0.50, 0.10, 0.985, 30)
+	right_flipper = _add_button(&"flipper_right", "R", Color(0.95, 0.55, 0.12, 0.95), 0.90, 0.50, 1.0, 0.985, 30)
+	launch = _add_button(&"plunger", "LAUNCH", Color(0.2, 0.75, 0.45, 0.95), 0.90, 0.29, 1.0, 0.49, 16)
+	pause_btn = _add_button(&"pause", "PAUSE", Color(0.7, 0.75, 0.85, 0.9), 0.0, 0.0, 0.085, 0.095, 15)
+	restart_btn = _add_button(&"restart", "RESTART", Color(0.85, 0.35, 0.3, 0.9), 0.085, 0.0, 0.17, 0.095, 15)
 
 
-func _add_button(action: StringName, text: String, accent: Color, l: float, t: float, r: float, b: float) -> VirtualButton:
+func _add_button(action: StringName, text: String, accent: Color, l: float, t: float, r: float, b: float, font_size := 22) -> VirtualButton:
 	var btn := VirtualButton.new()
 	btn.action = action
 	btn.label_text = text
 	btn.accent = accent
+	btn.font_size = font_size
 	btn.anchor_left = l
 	btn.anchor_top = t
 	btn.anchor_right = r

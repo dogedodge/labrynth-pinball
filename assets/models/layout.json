@@ -1,147 +1,927 @@
 {
-  "units": "metres",
-  "coords": "Godot (Y-up), table.glb origin at playfield centre, surface y=0; far/top end of table is -Z, player/flippers at +Z",
-  "Marker_FlipperLeft": {
-    "godot_position": [
-      -0.0995,
-      0,
-      0.42
-    ],
-    "godot_rotation_y_deg": 0.0
-  },
-  "Marker_FlipperRight": {
-    "godot_position": [
-      0.0505,
-      0,
-      0.42
-    ],
-    "godot_rotation_y_deg": 180.0
-  },
-  "Marker_Plunger": {
-    "godot_position": [
-      0.2695,
-      0,
-      0.5
-    ],
-    "godot_rotation_y_deg": 0.0
-  },
-  "Marker_BallSpawn": {
-    "godot_position": [
-      0.2695,
-      0.0135,
-      0.4845
-    ],
-    "godot_rotation_y_deg": 0.0
-  },
-  "Marker_Bumper1": {
-    "godot_position": [
-      -0.0995,
-      0,
-      -0.2
-    ],
-    "godot_rotation_y_deg": 0.0
-  },
-  "Marker_Bumper2": {
-    "godot_position": [
-      0.0505,
-      0,
-      -0.2
-    ],
-    "godot_rotation_y_deg": 0.0
-  },
-  "Marker_Bumper3": {
-    "godot_position": [
-      -0.0245,
-      0,
-      -0.29
-    ],
-    "godot_rotation_y_deg": 0.0
-  },
+ "units": "metres",
+ "coords": "Godot (Y-up), table.glb origin at playfield centre, surface y=0; far/top end of table is -Z, player/flippers at +Z",
+ "slingshots": {
   "Marker_SlingshotLeft": {
-    "godot_position": [
-      -0.1845,
-      0,
-      0.24
+   "kick_dir": [
+    0.7769,
+    0.0,
+    -0.6296
+   ],
+   "face": [
+    [
+     -0.0945,
+     0.3277
     ],
-    "godot_rotation_y_deg": 0.0
+    [
+     -0.2385,
+     0.15
+    ]
+   ],
+   "edges": [
+    [
+     [
+      -0.0945,
+      0.3277
+     ],
+     [
+      -0.2385,
+      0.15
+     ]
+    ],
+    [
+     [
+      -0.2385,
+      0.15
+     ],
+     [
+      -0.2385,
+      0.2383
+     ]
+    ],
+    [
+     [
+      -0.2385,
+      0.2383
+     ],
+     [
+      -0.0945,
+      0.3277
+     ]
+    ]
+   ]
   },
   "Marker_SlingshotRight": {
-    "godot_position": [
-      0.1355,
-      0,
-      0.24
+   "kick_dir": [
+    -0.7769,
+    0.0,
+    -0.6296
+   ],
+   "face": [
+    [
+     0.0455,
+     0.3277
     ],
-    "godot_rotation_y_deg": 0.0
-  },
-  "Marker_Target1": {
-    "godot_position": [
-      -0.19,
-      0,
-      -0.465
-    ],
-    "godot_rotation_y_deg": 0.0
-  },
-  "Marker_Target2": {
-    "godot_position": [
-      0.13,
-      0,
-      -0.465
-    ],
-    "godot_rotation_y_deg": 0.0
-  },
-  "Marker_Drain": {
-    "godot_position": [
-      -0.0245,
-      0,
-      0.51
-    ],
-    "godot_rotation_y_deg": 0.0
-  },
-  "_model_sizes_godot_xyz_m": {
-    "table": [
-      0.6,
-      0.07,
-      1.1
-    ],
-    "flipper": [
-      0.091,
-      0.029,
-      0.027
-    ],
-    "ball": [
-      0.027,
-      0.027,
-      0.027
-    ],
-    "bumper": [
-      0.06,
-      0.043,
-      0.06
-    ],
-    "plunger": [
-      0.03,
-      0.022,
-      0.097
-    ],
-    "slingshot_left": [
-      0.0458,
-      0.035,
-      0.1125
-    ],
-    "slingshot_right": [
-      0.0458,
-      0.035,
-      0.1125
-    ],
-    "target": [
-      0.03,
-      0.035,
-      0.0095
-    ],
-    "drain": [
-      0.106,
-      0.015,
-      0.004
+    [
+     0.1895,
+     0.15
     ]
+   ],
+   "edges": [
+    [
+     [
+      0.0455,
+      0.3277
+     ],
+     [
+      0.1895,
+      0.15
+     ]
+    ],
+    [
+     [
+      0.1895,
+      0.15
+     ],
+     [
+      0.1895,
+      0.2383
+     ]
+    ],
+    [
+     [
+      0.1895,
+      0.2383
+     ],
+     [
+      0.0455,
+      0.3277
+     ]
+    ]
+   ]
   }
+ },
+ "lanes": {
+  "left": {
+   "inlane": [
+    [
+     -0.2555,
+     0.08
+    ],
+    [
+     -0.2555,
+     0.2507
+    ],
+    [
+     -0.0945,
+     0.3506
+    ]
+   ],
+   "outlane": [
+    [
+     -0.3005,
+     0.07
+    ],
+    [
+     -0.3005,
+     0.44
+    ]
+   ],
+   "guide_x": -0.2775,
+   "lower_wall_x": -0.3245
+  },
+  "right": {
+   "inlane": [
+    [
+     0.2065,
+     0.08
+    ],
+    [
+     0.2065,
+     0.2507
+    ],
+    [
+     0.0455,
+     0.3506
+    ]
+   ],
+   "outlane": [
+    [
+     0.2515,
+     0.07
+    ],
+    [
+     0.2515,
+     0.44
+    ]
+   ],
+   "guide_x": 0.2285,
+   "lower_wall_x": 0.2755
+  }
+ },
+ "drains": {
+  "Marker_Drain": {
+   "size": [
+    0.1982243186433546,
+    0.04,
+    0.07
+   ],
+   "visual": true
+  },
+  "Marker_DrainOutlaneLeft": {
+   "size": [
+    0.036,
+    0.04,
+    0.07
+   ],
+   "visual": false
+  },
+  "Marker_DrainOutlaneRight": {
+   "size": [
+    0.036,
+    0.04,
+    0.07
+   ],
+   "visual": false
+  }
+ },
+ "Marker_FlipperLeft": {
+  "godot_position": [
+   -0.1216,
+   0,
+   0.38
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_FlipperRight": {
+  "godot_position": [
+   0.0726,
+   0,
+   0.38
+  ],
+  "godot_rotation_y_deg": 180.0
+ },
+ "Marker_Plunger": {
+  "godot_position": [
+   0.5495,
+   0,
+   0.44
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_BallSpawn": {
+  "godot_position": [
+   0.5495,
+   0.0135,
+   0.4245
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_Bumper1": {
+  "godot_position": [
+   -0.1289,
+   0,
+   -0.12
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_Bumper2": {
+  "godot_position": [
+   0.0799,
+   0,
+   -0.12
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_Bumper3": {
+  "godot_position": [
+   -0.0245,
+   0,
+   -0.22
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_Bumper4": {
+  "godot_position": [
+   -0.3725,
+   0,
+   -0.07
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_Bumper5": {
+  "godot_position": [
+   0.3003,
+   0,
+   -0.07
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_SlingshotLeft": {
+  "godot_position": [
+   -0.1905,
+   0,
+   0.2387
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_SlingshotRight": {
+  "godot_position": [
+   0.1415,
+   0,
+   0.2387
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_Target1": {
+  "godot_position": [
+   -0.3441,
+   0,
+   -0.481
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_Target2": {
+  "godot_position": [
+   -0.1817,
+   0,
+   -0.481
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_Target3": {
+  "godot_position": [
+   0.1083,
+   0,
+   -0.481
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_Target4": {
+  "godot_position": [
+   0.2707,
+   0,
+   -0.481
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_Drain": {
+  "godot_position": [
+   -0.0245,
+   0,
+   0.45
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_DrainOutlaneLeft": {
+  "godot_position": [
+   -0.3005,
+   0,
+   0.45
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "Marker_DrainOutlaneRight": {
+  "godot_position": [
+   0.2515,
+   0,
+   0.45
+  ],
+  "godot_rotation_y_deg": 0.0
+ },
+ "table": {
+  "width": 1.16,
+  "length": 1.0,
+  "inner_half_x": 0.568,
+  "inner_half_z": 0.488,
+  "playfield_center_x": -0.0245,
+  "lane_center_x": 0.5495,
+  "lane_wall_x": 0.525,
+  "flipper_length": 0.085,
+  "flipper_tip_gap": 0.033
+ },
+ "colliders": {
+  "note": "Godot XZ (table-local), metres. Segments are boxes from p0 to p1 (thickness t, height h, extended by t at the ends); pockets are convex prisms.",
+  "segments": [
+   {
+    "group": "outer",
+    "p0": [
+     -0.588,
+     -0.344
+    ],
+    "p1": [
+     -0.588,
+     0.494
+    ],
+    "t": 0.04,
+    "h": 0.05,
+    "extend": true
+   },
+   {
+    "group": "outer",
+    "p0": [
+     0.588,
+     0.494
+    ],
+    "p1": [
+     0.588,
+     -0.344
+    ],
+    "t": 0.04,
+    "h": 0.05,
+    "extend": true
+   },
+   {
+    "group": "outer",
+    "p0": [
+     0.424,
+     -0.508
+    ],
+    "p1": [
+     -0.424,
+     -0.508
+    ],
+    "t": 0.04,
+    "h": 0.05,
+    "extend": true
+   },
+   {
+    "group": "outer",
+    "p0": [
+     -0.574,
+     0.508
+    ],
+    "p1": [
+     0.574,
+     0.508
+    ],
+    "t": 0.04,
+    "h": 0.05,
+    "extend": true
+   },
+   {
+    "group": "outer",
+    "p0": [
+     -0.4339,
+     -0.5039
+    ],
+    "p1": [
+     -0.5839,
+     -0.3539
+    ],
+    "t": 0.04,
+    "h": 0.05,
+    "extend": false
+   },
+   {
+    "group": "outer",
+    "p0": [
+     0.5839,
+     -0.3539
+    ],
+    "p1": [
+     0.4339,
+     -0.5039
+    ],
+    "t": 0.04,
+    "h": 0.05,
+    "extend": false
+   },
+   {
+    "group": "lane",
+    "p0": [
+     0.525,
+     0.494
+    ],
+    "p1": [
+     0.525,
+     -0.28
+    ],
+    "t": 0.012,
+    "h": 0.05,
+    "extend": false
+   },
+   {
+    "group": "shoulder",
+    "p0": [
+     -0.568,
+     -0.0806
+    ],
+    "p1": [
+     -0.3245,
+     0.06
+    ],
+    "t": 0.012,
+    "h": 0.05,
+    "extend": true
+   },
+   {
+    "group": "shoulder",
+    "p0": [
+     -0.3245,
+     0.06
+    ],
+    "p1": [
+     -0.3245,
+     0.488
+    ],
+    "t": 0.012,
+    "h": 0.05,
+    "extend": true
+   },
+   {
+    "group": "shoulder",
+    "p0": [
+     0.519,
+     -0.0806
+    ],
+    "p1": [
+     0.2755,
+     0.06
+    ],
+    "t": 0.012,
+    "h": 0.05,
+    "extend": true
+   },
+   {
+    "group": "shoulder",
+    "p0": [
+     0.2755,
+     0.06
+    ],
+    "p1": [
+     0.2755,
+     0.488
+    ],
+    "t": 0.012,
+    "h": 0.05,
+    "extend": true
+   },
+   {
+    "group": "inlane",
+    "p0": [
+     -0.2775,
+     0.1
+    ],
+    "p1": [
+     -0.2775,
+     0.26
+    ],
+    "t": 0.01,
+    "h": 0.05,
+    "extend": true
+   },
+   {
+    "group": "inlane",
+    "p0": [
+     -0.2775,
+     0.26
+    ],
+    "p1": [
+     -0.1196,
+     0.358
+    ],
+    "t": 0.01,
+    "h": 0.05,
+    "extend": false
+   },
+   {
+    "group": "inlane",
+    "p0": [
+     -0.2775,
+     0.26
+    ],
+    "p1": [
+     -0.2775,
+     0.488
+    ],
+    "t": 0.01,
+    "h": 0.05,
+    "extend": true
+   },
+   {
+    "group": "inlane",
+    "p0": [
+     -0.1386,
+     0.3512
+    ],
+    "p1": [
+     -0.1386,
+     0.488
+    ],
+    "t": 0.014,
+    "h": 0.05,
+    "extend": false
+   },
+   {
+    "group": "inlane",
+    "p0": [
+     0.2285,
+     0.1
+    ],
+    "p1": [
+     0.2285,
+     0.26
+    ],
+    "t": 0.01,
+    "h": 0.05,
+    "extend": true
+   },
+   {
+    "group": "inlane",
+    "p0": [
+     0.2285,
+     0.26
+    ],
+    "p1": [
+     0.0706,
+     0.358
+    ],
+    "t": 0.01,
+    "h": 0.05,
+    "extend": false
+   },
+   {
+    "group": "inlane",
+    "p0": [
+     0.2285,
+     0.26
+    ],
+    "p1": [
+     0.2285,
+     0.488
+    ],
+    "t": 0.01,
+    "h": 0.05,
+    "extend": true
+   },
+   {
+    "group": "inlane",
+    "p0": [
+     0.0896,
+     0.3512
+    ],
+    "p1": [
+     0.0896,
+     0.488
+    ],
+    "t": 0.014,
+    "h": 0.05,
+    "extend": false
+   },
+   {
+    "group": "maze",
+    "p0": [
+     -0.4601,
+     -0.14
+    ],
+    "p1": [
+     -0.4601,
+     -0.3
+    ],
+    "t": 0.01,
+    "h": 0.04,
+    "extend": true
+   },
+   {
+    "group": "maze",
+    "p0": [
+     -0.4601,
+     -0.3
+    ],
+    "p1": [
+     -0.3325,
+     -0.27
+    ],
+    "t": 0.01,
+    "h": 0.04,
+    "extend": true
+   },
+   {
+    "group": "maze",
+    "p0": [
+     0.3867,
+     -0.14
+    ],
+    "p1": [
+     0.3867,
+     -0.3
+    ],
+    "t": 0.01,
+    "h": 0.04,
+    "extend": true
+   },
+   {
+    "group": "maze",
+    "p0": [
+     0.3867,
+     -0.3
+    ],
+    "p1": [
+     0.2591,
+     -0.27
+    ],
+    "t": 0.01,
+    "h": 0.04,
+    "extend": true
+   },
+   {
+    "group": "maze",
+    "p0": [
+     -0.0941,
+     -0.32
+    ],
+    "p1": [
+     -0.0245,
+     -0.34
+    ],
+    "t": 0.01,
+    "h": 0.04,
+    "extend": true
+   },
+   {
+    "group": "maze",
+    "p0": [
+     -0.0245,
+     -0.34
+    ],
+    "p1": [
+     0.0451,
+     -0.32
+    ],
+    "t": 0.01,
+    "h": 0.04,
+    "extend": true
+   },
+   {
+    "group": "maze",
+    "p0": [
+     -0.0245,
+     -0.34
+    ],
+    "p1": [
+     -0.0245,
+     -0.3
+    ],
+    "t": 0.01,
+    "h": 0.04,
+    "extend": true
+   },
+   {
+    "group": "maze",
+    "p0": [
+     -0.2861,
+     -0.1
+    ],
+    "p1": [
+     -0.2629,
+     -0.2
+    ],
+    "t": 0.01,
+    "h": 0.04,
+    "extend": true
+   },
+   {
+    "group": "maze",
+    "p0": [
+     0.2359,
+     -0.1
+    ],
+    "p1": [
+     0.2127,
+     -0.2
+    ],
+    "t": 0.01,
+    "h": 0.04,
+    "extend": true
+   },
+   {
+    "group": "maze",
+    "p0": [
+     -0.2565,
+     0.02
+    ],
+    "p1": [
+     -0.1869,
+     -0.02
+    ],
+    "t": 0.01,
+    "h": 0.04,
+    "extend": true
+   },
+   {
+    "group": "maze",
+    "p0": [
+     0.2075,
+     0.02
+    ],
+    "p1": [
+     0.1379,
+     -0.02
+    ],
+    "t": 0.01,
+    "h": 0.04,
+    "extend": true
+   }
+  ],
+  "pockets": [
+   [
+    [
+     -0.568,
+     -0.0806
+    ],
+    [
+     -0.568,
+     0.488
+    ],
+    [
+     -0.3245,
+     0.488
+    ],
+    [
+     -0.3245,
+     0.06
+    ]
+   ],
+   [
+    [
+     -0.2775,
+     0.26
+    ],
+    [
+     -0.1386,
+     0.3462
+    ],
+    [
+     -0.1386,
+     0.488
+    ],
+    [
+     -0.2775,
+     0.488
+    ]
+   ],
+   [
+    [
+     0.519,
+     -0.0806
+    ],
+    [
+     0.519,
+     0.488
+    ],
+    [
+     0.2755,
+     0.488
+    ],
+    [
+     0.2755,
+     0.06
+    ]
+   ],
+   [
+    [
+     0.2285,
+     0.26
+    ],
+    [
+     0.0896,
+     0.3462
+    ],
+    [
+     0.0896,
+     0.488
+    ],
+    [
+     0.2285,
+     0.488
+    ]
+   ]
+  ],
+  "floor": {
+   "size": [
+    1.18,
+    0.02,
+    1.02
+   ],
+   "y": -0.01
+  },
+  "glass_height": 0.065,
+  "lane_gate": {
+   "center": [
+    0.525,
+    -0.33
+   ],
+   "size": [
+    0.012,
+    0.045,
+    0.1
+   ]
+  },
+  "posts": [
+   {
+    "center": [
+     -0.2775,
+     0.1
+    ],
+    "r": 0.008,
+    "h": 0.05
+   },
+   {
+    "center": [
+     0.2285,
+     0.1
+    ],
+    "r": 0.008,
+    "h": 0.05
+   }
+  ]
+ },
+ "_model_sizes_godot_xyz_m": {
+  "table": [
+   1.16,
+   0.07,
+   1.0
+  ],
+  "flipper": [
+   0.108,
+   0.029,
+   0.029
+  ],
+  "ball": [
+   0.027,
+   0.027,
+   0.027
+  ],
+  "bumper": [
+   0.06,
+   0.043,
+   0.06
+  ],
+  "plunger": [
+   0.03,
+   0.022,
+   0.097
+  ],
+  "slingshot_left": [
+   0.1477,
+   0.035,
+   0.1796
+  ],
+  "slingshot_right": [
+   0.1477,
+   0.035,
+   0.1796
+  ],
+  "target": [
+   0.03,
+   0.035,
+   0.0095
+  ],
+  "drain": [
+   0.1482,
+   0.015,
+   0.004
+  ]
+ }
 }

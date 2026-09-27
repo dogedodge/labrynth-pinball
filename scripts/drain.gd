@@ -5,6 +5,10 @@ signal ball_drained
 
 const VISUAL_PATH := "res://assets/models/drain.glb"
 
+## Trigger box size and whether to show the drain lip model (outlane drains don't).
+@export var size := Vector3(0.22, 0.04, 0.07)
+@export var show_visual := true
+
 
 func _ready() -> void:
 	collision_layer = PinballData.LAYER_DRAIN
@@ -12,11 +16,12 @@ func _ready() -> void:
 	monitorable = false
 	monitoring = true
 
-	var visual: Node3D = ModelUtil.instantiate_glb(VISUAL_PATH)
-	add_child(visual)
+	if show_visual:
+		var visual: Node3D = ModelUtil.instantiate_glb(VISUAL_PATH)
+		add_child(visual)
 
 	var box := BoxShape3D.new()
-	box.size = Vector3(0.16, 0.04, 0.07)
+	box.size = size
 	var cs := CollisionShape3D.new()
 	cs.shape = box
 	cs.position = Vector3(0.0, 0.02, 0.01)
