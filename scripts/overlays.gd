@@ -22,10 +22,10 @@ func _ready() -> void:
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.anchor_left = 0.25
-	box.anchor_right = 0.75
-	box.anchor_top = 0.32
-	box.anchor_bottom = 0.68
+	box.anchor_left = 0.08
+	box.anchor_right = 0.92
+	box.anchor_top = 0.34
+	box.anchor_bottom = 0.62
 	add_child(box)
 
 	_title = _label(48, Color(1, 0.92, 0.7))
@@ -49,14 +49,14 @@ func _label(size: int, color: Color) -> Label:
 func show_paused() -> void:
 	_title.text = "PAUSED"
 	_detail.text = ""
-	_hint.text = "Pause / Esc to resume"
+	_hint.text = "Tap PAUSE or press Esc / P to resume"
 	visible = true
 
 
 func show_game_over(score: int) -> void:
 	_title.text = "GAME OVER"
 	_detail.text = "Score  %d" % score
-	_hint.text = "Restart or press R / Enter"
+	_hint.text = "Tap RESTART or press R / Enter"
 	visible = true
 
 

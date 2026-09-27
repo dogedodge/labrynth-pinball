@@ -5,7 +5,7 @@ config_version=5
 [application]
 
 config/name="Labrynth Pinball"
-config/description="Minimal landscape pinball MVP built around the Labrynth table models."
+config/description="Minimal portrait (mobile) pinball MVP built around the Labrynth table models."
 config/version="0.1.0"
 config/tags=PackedStringArray("game", "3d", "pinball")
 run/main_scene="res://scenes/main.tscn"
@@ -14,12 +14,12 @@ config/icon="res://icon.svg"
 
 [display]
 
-window/size/viewport_width=1280
-window/size/viewport_height=720
+window/size/viewport_width=720
+window/size/viewport_height=1280
 window/size/mode=0
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-window/handheld/orientation=4
+window/handheld/orientation=1
 window/vsync/vsync_mode=0
 
 [input_devices]
@@ -68,6 +68,9 @@ common/max_physics_steps_per_frame=16
 jolt_physics_3d/collisions/collision_margin_fraction=0.004
 jolt_physics_3d/simulation/velocity_steps=12
 jolt_physics_3d/simulation/position_steps=3
+; Default (0.02 m) is huge next to a 27 mm ball and caused ghost bounces off nearby
+; wall corners (a full-power launch bounced off the right inlane corner).
+jolt_physics_3d/simulation/speculative_contact_distance=0.004
 
 [rendering]
 
