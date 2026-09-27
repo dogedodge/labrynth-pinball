@@ -1,0 +1,2 @@
+# Ignore Blender sources; Godot does not need them at runtime and headless
+# import would otherwise require a configured Blender executable.
