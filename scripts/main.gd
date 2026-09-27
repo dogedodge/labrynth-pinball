@@ -213,6 +213,7 @@ func _run_smoke_test() -> void:
 
 	_check_inlane_collision(report, failures)
 	await _check_inlane_ball_block(report, failures)
+	await _check_slingshot_no_rest(report, failures)
 
 	if failures.is_empty():
 		print("SMOKE TEST PASSED")
@@ -327,6 +328,88 @@ func _check_inlane_ball_block(report: Dictionary, failures: PackedStringArray) -
 		report[String(shot[0]) + "_impact"] = [worst.x, worst.y, worst.z]
 		if escaped:
 			failures.append("ball tunneled through %s (x=%.3f z=%.3f)" % [shot[0], worst.x, worst.z])
+
+
+func _seg_dist(p: Vector2, raw: Array) -> float:
+	var a := Vector2(float(raw[0][0]), float(raw[0][1]))
+	var b := Vector2(float(raw[1][0]), float(raw[1][1]))
+	return p.distance_to(Geometry2D.get_closest_point_to_segment(p, a, b))
+
+
+func _check_slingshot_no_rest(report: Dictionary, failures: PackedStringArray) -> void:
+	# Drop test balls on a grid around both slingshots (kicking faces, deflectors
+	# and the guide just below) with the flippers down, simulate a few seconds,
+	# and require that none of them comes to rest near a slingshot.
+	var slings: Dictionary = world.get_layout().get("slingshots", {})
+	if slings.is_empty():
+		failures.append("layout has no slingshot data")
+		return
+	var space := world.get_world_3d().direct_space_state
+	var probe := SphereShape3D.new()
+	probe.radius = PinballData.BALL_RADIUS + 0.002
+	var balls: Array = []
+	for key in slings.keys():
+		var sl: Dictionary = slings[key]
+		var face: Array = sl["face"]
+		var defl: Array = sl["deflector"]
+		var xs: Array = [float(face[0][0]), float(face[1][0]), float(defl[1][0])]
+		var zs: Array = [float(face[0][1]), float(face[1][1]), float(defl[1][1])]
+		var x0: float = xs.min() - 0.08
+		var x1: float = xs.max() + 0.08
+		var z0: float = zs.min() - 0.10
+		var z1: float = zs.max() + 0.04
+		var x := x0
+		while x <= x1:
+			var z := z0
+			while z <= z1:
+				var p2 := Vector2(x, z)
+				if _seg_dist(p2, face) < 0.09 or _seg_dist(p2, defl) < 0.09:
+					# probe sits 2 mm above the floor so it only detects walls / gadgets
+					var local := Vector3(x, PinballData.BALL_RADIUS + 0.004, z)
+					var q := PhysicsShapeQueryParameters3D.new()
+					q.shape = probe
+					q.transform = Transform3D(world.playfield.global_basis, world.playfield.to_global(local))
+					q.collision_mask = PinballData.LAYER_WORLD | PinballData.LAYER_GADGET | PinballData.LAYER_FLIPPER
+					var inside_pocket := false
+					for raw in world.get_layout().get("colliders", {}).get("pockets", []):
+						var poly := PackedVector2Array()
+						for c in raw:
+							poly.append(Vector2(float(c[0]), float(c[1])))
+						if Geometry2D.is_point_in_polygon(p2, poly):
+							inside_pocket = true
+					if not inside_pocket and space.intersect_shape(q, 1).is_empty():
+						var b := PinballBall.new()
+						b.name = "SlingTestBall%d" % balls.size()
+						world.playfield.add_child(b)
+						b.collision_layer = 0  # invisible to the drain and other test balls
+						b.position = local
+						b.set_meta("start", p2)
+						b.set_meta("sling", key)
+						balls.append(b)
+				z += 0.03
+			x += 0.03
+	report["sling_test_balls"] = balls.size()
+	if balls.size() < 20:
+		failures.append("too few slingshot test positions (%d)" % balls.size())
+	await get_tree().create_timer(5.0).timeout
+	var stuck: Array = []
+	var at_bottom := 0
+	var lf_z := world.marker_position("Marker_FlipperLeft").z
+	for b in balls:
+		var pos: Vector3 = world.playfield.to_local(b.global_position)
+		var p2 := Vector2(pos.x, pos.z)
+		var sl: Dictionary = slings[b.get_meta("sling")]
+		var near: bool = _seg_dist(p2, sl["face"]) < 0.10 or _seg_dist(p2, sl["deflector"]) < 0.10
+		if pos.z > lf_z - 0.06:
+			at_bottom += 1
+		if b.linear_velocity.length() < 0.03 and near:
+			var s0: Vector2 = b.get_meta("start")
+			stuck.append("start(%.2f,%.2f)->rest(%.3f,%.3f)" % [s0.x, s0.y, pos.x, pos.z])
+		b.queue_free()
+	report["sling_test_at_flippers_or_drain"] = at_bottom
+	report["sling_test_stuck"] = stuck
+	if not stuck.is_empty():
+		failures.append("%d balls came to rest near a slingshot: %s" % [stuck.size(), ", ".join(stuck)])
 
 
 func _run_screenshot() -> void:

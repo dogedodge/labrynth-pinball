@@ -205,10 +205,27 @@ def on_guide(p0, p1, x):
     return (x, p0[1] + (p1[1] - p0[1]) * (x - p0[0]) / (p1[0] - p0[0]))
 AL = on_guide((left_x, GUIDE_TOP_Y), GEND_L, lp[0] - gap)    # apron wall tops
 AR = on_guide((right_x, GUIDE_TOP_Y), GEND_R, rp[0] + gap)
+SLING_A_DX = 0.07          # A sits this far (in x) outward from the guide end
+SLING_FACE_LEN = 0.16
+SLING_FACE_DEG = 55.0      # kicking face angle from horizontal (guide is ~32 deg)
+def guide_y_left(x):
+    return on_guide((left_x, GUIDE_TOP_Y), GEND_L, x)[1]
+_ax = GEND_L[0] - SLING_A_DX
+SL_A = (_ax, guide_y_left(_ax))
+_a = math.radians(SLING_FACE_DEG)
+SL_B = (SL_A[0] - SLING_FACE_LEN * math.cos(_a), SL_A[1] + SLING_FACE_LEN * math.sin(_a))
+SL_D = (SL_B[0], guide_y_left(SL_B[0]))
+_gs = (GUIDE_TOP_Y - GEND_L[1]) / (GEND_L[0] - left_x)            # guide slope (y per -x)
+SL_W = (left_x, SL_B[1] + (SL_B[0] - left_x) * _gs)                 # deflector parallel to guide
+def mirror(p):
+    return (2 * PLAY_CX - p[0], p[1])
+SR_A, SR_B, SR_D, SR_W = (mirror(p) for p in (SL_A, SL_B, SL_D, SL_W))
+SR_W = (right_x, SR_W[1])
 bm = bmesh.new()
-# (not extended: a box corner poking into the plunger lane caused ghost contacts)
-seg(bm, "inlane", (left_x, GUIDE_TOP_Y), GEND_L, t=0.014, extend=False)
-seg(bm, "inlane", (right_x, GUIDE_TOP_Y), GEND_R, t=0.014, extend=False)
+# Visible/colliding guide only from under the slingshot (D) down to the flipper;
+# above D it would be buried between two solid fills anyway.
+seg(bm, "inlane", SL_D, GEND_L, t=0.014, extend=False)
+seg(bm, "inlane", SR_D, GEND_R, t=0.014, extend=False)
 # apron walls closing the area under the guides
 seg(bm, "inlane", AL, (AL[0], -INNER_Y), t=0.014)
 seg(bm, "inlane", AR, (AR[0], -INNER_Y), t=0.014)
@@ -224,10 +241,47 @@ colliders["pockets"] = [
                       (AR[0] + e, -INNER_Y - e), (AR[0] + e, AR[1] - e)]],
 ]
 
+# ---- slingshots: sit ON the inlane guide, no gaps --------------------------
+# Left side (right is mirrored about the playfield centre line x = PLAY_CX):
+#   A = bottom point, on the guide just above the flipper
+#   B = top point, up and outward, 0.16 m from A along the kicking face
+#   D = point on the guide directly below B
+# Triangle A-B-D is the slingshot body (back edge A-D flush on the guide), the
+# rubber kicking face A-B faces the table centre. Above it a deflector wall runs
+# from B up to the side wall (W), and the space W-B-D-guide top is a solid fill,
+# so the playfield boundary wall -> W -> B -> A -> flipper only ever descends
+# toward the flipper: there is no corner or pocket where a ball can come to rest.
+SLING_T = 0.012
+bm = bmesh.new()
+for (b_, w_, sgn) in ((SL_B, SL_W, 1), (SR_B, SR_W, -1)):
+    # shift the deflector wall into the fill by t/2 so its face passes exactly through B
+    d_ = Vector(w_) - Vector(b_); n_ = Vector((d_.y, -d_.x)).normalized() * (SLING_T / 2) * sgn
+    seg(bm, "deflector", tuple(Vector(b_) - n_), tuple(Vector(w_) - n_), t=SLING_T, extend=False)
+obj_from_bm("SlingDeflectors", bm, M["guide"], C_table)
+e2 = 0.004
+colliders["pockets"] += [
+    [gxz(p) for p in [(left_x - e2, GUIDE_TOP_Y), (left_x - e2, SL_W[1]), SL_B, SL_D]],
+    [gxz(p) for p in [(right_x, GUIDE_TOP_Y), (right_x, SR_W[1]), SR_B, SR_D]],
+]
+SLING_FILL_L = [(left_x, GUIDE_TOP_Y), SL_W, SL_B, SL_D]
+SLING_FILL_R = [(right_x, GUIDE_TOP_Y), SR_W, SR_B, SR_D]
+def centroid(pts):
+    return (sum(p[0] for p in pts) / 3, sum(p[1] for p in pts) / 3)
+SL_C = centroid((SL_A, SL_B, SL_D)); SR_C = centroid((SR_A, SR_B, SR_D))
+def kick_dir(a_, b_, sgn):
+    f = Vector(b_) - Vector(a_); n = Vector((-f.y, f.x)).normalized() * -sgn   # inward normal
+    return [round(n.x, 4), 0.0, round(-n.y, 4)]                               # Godot XZ
+layout["slingshots"] = {
+    "Marker_SlingshotLeft": {"kick_dir": kick_dir(SL_A, SL_B, 1),
+                             "face": [gxz(SL_A), gxz(SL_B)], "deflector": [gxz(SL_B), gxz(SL_W)]},
+    "Marker_SlingshotRight": {"kick_dir": kick_dir(SR_A, SR_B, -1),
+                              "face": [gxz(SR_A), gxz(SR_B)], "deflector": [gxz(SR_B), gxz(SR_W)]},
+}
+
 # raised apron plates over the dead pockets behind the guides (visual cue that
 # these areas are out of play; physics uses the pocket colliders above)
 bm = bmesh.new()
-for poly in (POCKET_L, POCKET_R):
+for poly in (POCKET_L, POCKET_R, SLING_FILL_L, SLING_FILL_R):
     prism(bm, poly, 0.0, 0.03)
 obj_from_bm("ApronPlates", bm, M["apron"], C_table)
 
@@ -236,17 +290,23 @@ c = PLAY_CX
 def X(x):  # x designed for a 1.0 m table -> spread across the actual width
     return c + (x - c) * SX
 maze_1m = [
-    ((-0.40, 0.14), (-0.40, 0.30)), ((-0.40, 0.30), (-0.29, 0.30)),      # upper-left L
-    ((0.33, 0.14), (0.33, 0.30)),   ((0.33, 0.30), (0.22, 0.30)),        # upper-right L
-    ((c - 0.06, 0.34), (c + 0.06, 0.34)), ((c, 0.34), (c, 0.30)),        # top centre T
-    ((-0.24, 0.10), (-0.24, 0.20)), ((0.19, 0.10), (0.19, 0.20)),        # inner pillars
-    ((-0.44, -0.04), (-0.36, -0.04)), ((0.31, -0.04), (0.39, -0.04)),    # side stubs
+    # no perfectly horizontal tops: every ledge slopes (~15 deg) so balls roll off
+    ((-0.40, 0.14), (-0.40, 0.30)), ((-0.40, 0.30), (-0.29, 0.27)),      # upper-left L
+    ((0.33, 0.14), (0.33, 0.30)),   ((0.33, 0.30), (0.22, 0.27)),        # upper-right L
+    ((c - 0.06, 0.32), (c, 0.34)), ((c, 0.34), (c + 0.06, 0.32)),        # top centre roof (^)
+    ((c, 0.34), (c, 0.30)),                                               # stem
+    ((-0.25, 0.10), (-0.23, 0.20)), ((0.20, 0.10), (0.18, 0.20)),        # inner pillars (leaning: no flat cap to balance on)
+    ((-0.44, 0.08), (-0.375, 0.06)), ((0.39, 0.08), (0.326, 0.06)),     # side stubs, sloped toward the centre
     ((c - 0.20, -0.02), (c - 0.14, 0.02)), ((c + 0.20, -0.02), (c + 0.14, 0.02)),  # mid chevrons
 ]
 maze = [((X(a_[0]), a_[1]), (X(b_[0]), b_[1])) for a_, b_ in maze_1m]
 bm = bmesh.new()
 for a_, b_ in maze: seg(bm, "maze", a_, b_, h=0.04, t=0.01)
 obj_from_bm("MazeWalls", bm, M["maze"], C_table)
+
+# stand-up targets flush against the top wall: back of the target touches the wall,
+# so there is no ledge behind it where a ball could come to rest
+TARGET_Y = INNER_Y - 0.007
 
 # placement markers (exported as Node3D in the glb)
 P = {
@@ -259,12 +319,12 @@ P = {
     "Marker_Bumper3":      ((c, 0.22, 0), 0.0),
     "Marker_Bumper4":      ((X(c - 0.30), 0.04, 0), 0.0),
     "Marker_Bumper5":      ((X(c + 0.28), 0.04, 0), 0.0),
-    "Marker_SlingshotLeft":  ((X(c - 0.20), -0.20, 0), 0.0),
-    "Marker_SlingshotRight": ((X(c + 0.20), -0.20, 0), 0.0),
-    "Marker_Target1":      ((X(-0.30), 0.42, 0), 0.0),
-    "Marker_Target2":      ((X(-0.16), 0.42, 0), 0.0),
-    "Marker_Target3":      ((X(0.09), 0.42, 0), 0.0),
-    "Marker_Target4":      ((X(0.23), 0.42, 0), 0.0),
+    "Marker_SlingshotLeft":  ((SL_C[0], SL_C[1], 0), 0.0),    # triangle centroid
+    "Marker_SlingshotRight": ((SR_C[0], SR_C[1], 0), 0.0),
+    "Marker_Target1":      ((X(-0.30), TARGET_Y, 0), 0.0),
+    "Marker_Target2":      ((X(-0.16), TARGET_Y, 0), 0.0),
+    "Marker_Target3":      ((X(0.09), TARGET_Y, 0), 0.0),
+    "Marker_Target4":      ((X(0.23), TARGET_Y, 0), 0.0),
     "Marker_Drain":        ((c, -0.45, 0), 0.0),
 }
 for n, (loc, rz) in P.items():
@@ -324,21 +384,21 @@ for v in res["verts"]:
 obj_from_bm("PlungerKnob", bm, M["rubber"], C_plng)
 
 # ---------------------------------------------------------------- SLINGSHOTS (left + mirrored right)
-def slingshot(name, sign):
+def slingshot(name, tri_world, cen, sign):
+    """Body = triangle A-B-D (world coords from the table layout) re-centred on its
+    centroid; red rubber strip on the kicking face A-B (facing the table centre)."""
     C = collection(name)
-    tri = [(0.0, 0.045), (0.0, -0.045), (0.04, -0.065)]      # left version: kicker faces +X
-    cx = sum(p[0] for p in tri) / 3; cy = sum(p[1] for p in tri) / 3
-    tri = [((x - cx) * sign, y - cy) for x, y in tri]
+    tri = [(x - cen[0], y - cen[1]) for x, y in tri_world]
     bm = bmesh.new(); prism(bm, tri, 0.0, 0.035)
     obj_from_bm(name.title().replace("_", "") + "Body", bm, M["guide"], C)
-    # rubber kicker strip along the hypotenuse
-    a, b = Vector((*tri[0], 0)), Vector((*tri[2], 0))
-    bm = bmesh.new(); add_wall(bm, a, b, h=0.03, t=0.006, extend=False)
-    bmesh.ops.translate(bm, verts=bm.verts, vec=(0.003 * sign, 0.0015, 0.003))
+    a_, b_ = Vector((*tri[0], 0)), Vector((*tri[1], 0))
+    f = (b_ - a_).normalized(); n = Vector((-f.y, f.x, 0)) * -sign        # inward normal
+    bm = bmesh.new(); add_wall(bm, a_ + f * 0.004, b_ - f * 0.004, h=0.03, t=0.006, extend=False)
+    bmesh.ops.translate(bm, verts=bm.verts, vec=n * 0.003 + Vector((0, 0, 0.003)))
     obj_from_bm(name.title().replace("_", "") + "Kicker", bm, M["rubber"], C)
     return C
-C_sl = slingshot("slingshot_left", 1)
-C_sr = slingshot("slingshot_right", -1)
+C_sl = slingshot("slingshot_left", (SL_A, SL_B, SL_D), SL_C, 1)
+C_sr = slingshot("slingshot_right", (SR_A, SR_B, SR_D), SR_C, -1)
 
 # ---------------------------------------------------------------- STANDUP TARGET
 C_tgt = collection("target")

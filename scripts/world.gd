@@ -110,12 +110,14 @@ func _build() -> void:
 	sling_l.name = "SlingshotLeft"
 	sling_l.is_left = true
 	sling_l.position = marker_position("Marker_SlingshotLeft")
+	sling_l.kick_local = _sling_kick("Marker_SlingshotLeft")
 	playfield.add_child(sling_l)
 
 	var sling_r := PinballSlingshot.new()
 	sling_r.name = "SlingshotRight"
 	sling_r.is_left = false
 	sling_r.position = marker_position("Marker_SlingshotRight")
+	sling_r.kick_local = _sling_kick("Marker_SlingshotRight")
 	playfield.add_child(sling_r)
 
 	for marker in _markers_with_prefix("Marker_Target"):
@@ -142,6 +144,14 @@ func _markers_with_prefix(prefix: String) -> PackedStringArray:
 			out.append(String(key))
 	out.sort()
 	return out
+
+
+func _sling_kick(marker: String) -> Vector3:
+	var slings: Dictionary = _layout.get("slingshots", {})
+	var raw: Variant = slings.get(marker, {}).get("kick_dir", [])
+	if raw is Array and raw.size() >= 3:
+		return Vector3(float(raw[0]), float(raw[1]), float(raw[2]))
+	return Vector3.ZERO
 
 
 func get_layout() -> Dictionary:

@@ -7,14 +7,18 @@ const KICK := 0.28
 const COOLDOWN := 0.16
 
 var is_left := true
-var kick_local := Vector3(1, 0, -0.35)
+var kick_local := Vector3.ZERO
 var _cooldown := 0.0
 var _playfield: Node3D
 
 
 func _ready() -> void:
 	_playfield = get_parent() as Node3D
-	kick_local = Vector3(0.92 if is_left else -0.92, 0.0, -0.38).normalized()
+	# kick_local is set by world.gd from layout.json ("slingshots" -> kick_dir):
+	# perpendicular to the rubber kicking face, pointing into the playfield.
+	if kick_local.length_squared() < 0.0001:
+		kick_local = Vector3(0.82 if is_left else -0.82, 0.0, -0.57)
+	kick_local = kick_local.normalized()
 	collision_layer = PinballData.LAYER_GADGET
 	collision_mask = PinballData.LAYER_BALL
 	physics_material_override = ModelUtil.physics_material(0.08, 0.2)
