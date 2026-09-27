@@ -2,24 +2,75 @@
 
 A minimal **Godot 4** pinball game MVP with a light "labyrinth" theme.
 
-- **Engine:** Godot 4.x (assets verified to import in Godot 4.7.2)
+- **Engine:** Godot 4.x (developed and verified with **4.7.2**; `project.godot` features target 4.3+)
 - **Target:** mobile, **landscape** orientation (desktop works too)
-- **Controls:** keyboard (e.g. Left/Right or Z/`/` for flippers, Space/Down for plunger) **plus on-screen virtual buttons** for touch
+- **Controls:** keyboard plus on-screen virtual buttons (multitouch)
 - **Models:** built procedurally in **Blender** (script in `tools/blender/`), exported as `.glb`
-- **Binary assets** (`.glb`, `.blend`, images, audio, fonts, …) are stored with **Git LFS** — run `git lfs install` before cloning/pulling.
+- **Binary assets** (`.glb`, `.blend`, images, audio, fonts, …) are stored with **Git LFS** — run `git lfs install` and `git lfs pull` so the real models are present.
 
-![preview](docs/preview.png)
+![assembled models](docs/preview.png)
 
-> Status: assets only. Game code / scenes are not written yet.
+![gameplay](docs/gameplay.png)
 
-## Repo layout
+## How to run
+
+1. Install [Godot 4.x](https://godotengine.org/download) (4.7.2 matches the author) and [Git LFS](https://git-lfs.com/).
+2. From the repo root:
+
+```sh
+git lfs pull
+godot --path .          # or open this folder in the Godot editor and press Play
+```
+
+Headless import / smoke test (launches the ball up the plunger lane and checks flipper rotation):
+
+```sh
+godot --headless --path . --import
+godot --headless --path . -- --smoke-test
+# optional: tools/verify.sh
+```
+
+Capture a PNG of the running game (writes `docs/gameplay.png` by default):
+
+```sh
+godot --path . -- --screenshot
+```
+
+## Controls
+
+Keyboard and on-screen buttons both use the same Input Map actions, so they can be mixed. Touch buttons support **multitouch** (hold both flippers at once).
+
+| Action | Keyboard | On-screen |
+|---|---|---|
+| Left flipper | Left, Z, A, `,` | **L** (left side) |
+| Right flipper | Right, M, D, `/` | **R** (right side) |
+| Charge / release plunger | Space or Down (hold to charge, release to shoot) | **LAUNCH** |
+| Pause | Esc or P | **PAUSE** |
+| Restart | R or Enter | **RESTART** |
+
+## Gameplay
+
+- 3 balls per game. The ball starts in the plunger lane; charge and release to launch.
+- Pop bumpers **100**, slingshots **10**, stand-up targets **500**.
+- Drain between the flippers loses a ball. After the last ball, Game Over — press Restart.
+- There is no extra ball / ball-save in this MVP.
+
+## Project structure
 
 ```
-assets/models/     .glb models (one per piece) + layout.json (suggested placements)
-assets/blender/    labrynth_models.blend (source, one collection per model)
-tools/blender/     generate_models.py (reproducible generator)
-docs/              preview image
+scenes/main.tscn       main scene (world + HUD + touch + overlays)
+scripts/               gameplay (world assembly, ball, flippers, plunger, gadgets)
+ui/                    HUD / touch / overlay packed scenes
+assets/models/         .glb models (one per piece) + layout.json (suggested placements)
+assets/blender/        labrynth_models.blend (source, one collection per model)
+tools/blender/         generate_models.py (reproducible generator)
+tools/verify.sh        headless import + smoke test helper
+docs/                  preview + gameplay screenshots
 ```
+
+The table is assembled at runtime from `assets/models/*.glb` and `layout.json` marker positions. The playfield is tilted **6.5°** about X (top / −Z raised). Physics uses **Jolt**, **180 Hz** ticks, and **continuous collision detection** on the ball (real 27 mm scale).
+
+Launch is a charged velocity impulse (the plunger mesh is animated visually). Outer walls / inlanes use primitive boxes; maze walls use the imported trimesh. No audio in this MVP. Headless runs may log a missing ALSA device and fall back to the dummy audio driver.
 
 Regenerate all models (from repo root):
 
@@ -37,7 +88,7 @@ ball is a real 27 mm ball.
 - the **far/top** end of the table (bumpers, maze) is **−Z**
 - the **player end** (flippers, drain, plunger) is **+Z**
 - plunger lane is on the **right** (+X)
-- the table is modelled flat — tilt it (~6–7° about X, top end up) or tilt gravity in code.
+- the table is modelled flat — this project tilts the playfield ~6.5° about X (top end up).
 
 | File | Size (x × y × z, m) | Origin / pivot | Notes |
 |---|---|---|---|
