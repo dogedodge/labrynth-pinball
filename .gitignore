@@ -1,0 +1,36 @@
+# Godot 4 editor cache / imported data (regenerated on open)
+.godot/
+# NOTE: *.import files are intentionally NOT ignored (Godot 4 needs them committed).
+
+# Export presets may contain keystore paths/passwords and signing credentials
+export_presets.cfg
+export_credentials.cfg
+*.keystore
+*.jks
+
+# Build output
+build/
+builds/
+export/
+*.apk
+*.aab
+*.ipa
+*.pck
+*.zip
+
+# Mono / C# (if ever used)
+.mono/
+data_*/
+mono_crash.*.json
+
+# Blender backups
+*.blend1
+*.blend2
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.tmp
+*~
+.vscode/
+.idea/
