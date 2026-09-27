@@ -27,17 +27,28 @@ argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 PREVIEW = argv[argv.index("--preview") + 1] if "--preview" in argv else None
 
 # ---------------------------------------------------------------- dimensions
-TABLE_W, TABLE_L = 0.60, 1.10          # outer size (m)
+# Wide "landscape-friendly" table: 1.16 m x 1.00 m (was 0.60 x 1.10) so it fills a
+# 16:9 phone screen when viewed from the player end.
+TABLE_W, TABLE_L = 1.16, 1.00          # outer size (m)
+SX = TABLE_W / 1.00                     # x-spread factor for layout designed at 1.0 m width
 FLOOR_T = 0.02                          # floor thickness (below z=0)
 WALL_H, WALL_T = 0.05, 0.012            # wall height / thickness
 BALL_R = 0.0135                         # 27 mm ball (real pinball size)
 HX, HY = TABLE_W / 2, TABLE_L / 2
-INNER_X = HX - WALL_T                   # inner face of outer walls
-LANE_WALL_X = 0.245                     # plunger lane separator (centre line)
+INNER_X = HX - WALL_T                   # inner face of outer walls (x)
+INNER_Y = HY - WALL_T                   # inner face of top/bottom walls (y)
+LANE_W = 0.037                          # plunger lane inner width
+LANE_WALL_X = INNER_X - LANE_W - WALL_T / 2   # plunger lane separator (centre line)
 LANE_CX = (LANE_WALL_X + WALL_T / 2 + INNER_X) / 2   # plunger lane centre
 PLAY_CX = (-INNER_X + LANE_WALL_X - WALL_T / 2) / 2  # playfield centre x
-FLIP_LEN, FLIP_R0, FLIP_R1, FLIP_H = 0.07, 0.012, 0.006, 0.025
-FLIP_PIVOT_DX, FLIP_PIVOT_Y = 0.075, -0.42
+LANE_TOP_Y = 0.28                       # top end of the lane separator
+CHAMFER = 0.15                          # top corner chamfer size (deflects the launch)
+FLIP_LEN, FLIP_R0, FLIP_R1, FLIP_H = 0.085, 0.013, 0.007, 0.025   # flipper (was 0.07 long)
+FLIP_REST_DEG = 30.0                    # rest angle (tip down)
+FLIP_GAP = 0.033                        # gap between flipper tips at rest (ball = 0.027)
+FLIP_PIVOT_DX = FLIP_LEN * math.cos(math.radians(FLIP_REST_DEG)) + FLIP_R1 + FLIP_GAP / 2
+FLIP_PIVOT_Y = -0.38
+GUIDE_TOP_Y = -0.08                     # where the inlane guides meet the side walls
 BUMPER_R = 0.03
 
 # ---------------------------------------------------------------- helpers
@@ -125,6 +136,9 @@ M = {
     "maze":   mat("MazeTeal",  (0.10, 0.55, 0.55), rough=0.6),
     "guide":  mat("GuideOrange", (0.95, 0.50, 0.10), rough=0.5),
     "chrome": mat("Chrome", (0.85, 0.85, 0.90), metal=1.0, rough=0.15),
+    # ball: only partly metallic so it stays bright without an environment map
+    "ball":   mat("BallSteel", (0.88, 0.88, 0.92), metal=0.35, rough=0.25),
+    "apron":  mat("ApronDark", (0.16, 0.13, 0.22), rough=0.7),
     "flip":   mat("FlipperWhite", (0.95, 0.95, 0.95), rough=0.4),
     "rubber": mat("RubberRed", (0.85, 0.10, 0.10), rough=0.8),
     "cap":    mat("BumperCap", (1.0, 0.85, 0.15), rough=0.3, emit=(0.6, 0.45, 0.05)),
@@ -135,72 +149,134 @@ layout = {}
 
 # ---------------------------------------------------------------- TABLE
 C_table = collection("table")
+colliders = {"note": "Godot XZ (table-local), metres. Segments are boxes from p0 to p1 "
+             "(thickness t, height h, extended by t at the ends); pockets are convex prisms.",
+             "segments": [], "pockets": []}
+
+def gxz(p):  # Blender XY -> Godot XZ
+    return [round(p[0], 4), round(-p[1], 4)]
+
+def seg(bm, group, p0, p1, h=WALL_H, t=WALL_T, extend=True, col_t=None, col_shift=0.0):
+    """Visual wall + matching collider entry. col_t/col_shift let outer walls get a
+    thicker collider that grows outward (away from the playfield) to stop tunnelling."""
+    add_wall(bm, p0, p1, h=h, t=t, extend=extend)
+    ct = col_t or t
+    d = Vector(p1) - Vector(p0); n = Vector((d.y, -d.x)).normalized() * col_shift   # right-hand normal = outward for outer walls
+    q0, q1 = Vector(p0) + n, Vector(p1) + n
+    colliders["segments"].append({"group": group, "p0": gxz(q0), "p1": gxz(q1), "t": round(ct, 4),
+                                  "h": round(h, 4), "extend": extend})
+
 bm = bmesh.new()
 add_box(bm, 0, 0, -FLOOR_T, TABLE_W, TABLE_L, FLOOR_T)
 obj_from_bm("Floor", bm, M["floor"], C_table)
+colliders["floor"] = {"size": [TABLE_W + 0.02, FLOOR_T, TABLE_L + 0.02], "y": -FLOOR_T / 2}
+colliders["glass_height"] = 0.065   # low glass: ball (27 mm) cannot hop the 40-50 mm walls
 
-# outer walls (with angled top corners)
+# outer walls (angled top corners). Colliders are 4 cm thick, growing outward.
 bm = bmesh.new()
-cx_ = HX - WALL_T / 2; cy_ = HY - WALL_T / 2; K = 0.09  # corner chamfer size
-add_wall(bm, (-cx_, -cy_), (-cx_, cy_ - K))                 # left
-add_wall(bm, (cx_, -cy_), (cx_, cy_ - K))                   # right
-add_wall(bm, (-cx_ + K, cy_), (cx_ - K, cy_))               # top
-add_wall(bm, (-cx_, -cy_), (cx_, -cy_))                     # bottom (drain zone is above this)
-add_wall(bm, (-cx_, cy_ - K), (-cx_ + K, cy_), extend=False)  # top-left chamfer
-add_wall(bm, (cx_, cy_ - K), (cx_ - K, cy_), extend=False)    # top-right chamfer (deflects launch)
+cx_ = HX - WALL_T / 2; cy_ = HY - WALL_T / 2; K = CHAMFER
+OT, OS = 0.04, (0.04 - WALL_T) / 2
+seg(bm, "outer", (-cx_, cy_ - K), (-cx_, -cy_), col_t=OT, col_shift=OS)     # left
+seg(bm, "outer", (cx_, -cy_), (cx_, cy_ - K), col_t=OT, col_shift=OS)       # right
+seg(bm, "outer", (cx_ - K, cy_), (-cx_ + K, cy_), col_t=OT, col_shift=OS)   # top
+seg(bm, "outer", (-cx_, -cy_), (cx_, -cy_), col_t=OT, col_shift=OS)         # bottom
+seg(bm, "outer", (-cx_ + K, cy_), (-cx_, cy_ - K), extend=False, col_t=OT, col_shift=OS)  # top-left chamfer
+seg(bm, "outer", (cx_, cy_ - K), (cx_ - K, cy_), extend=False, col_t=OT, col_shift=OS)    # top-right chamfer
 obj_from_bm("OuterWalls", bm, M["wall"], C_table)
 
 # plunger lane separator
 bm = bmesh.new()
-add_wall(bm, (LANE_WALL_X, -cy_), (LANE_WALL_X, 0.28), extend=False)
+seg(bm, "lane", (LANE_WALL_X, -cy_), (LANE_WALL_X, LANE_TOP_Y), extend=False)
 obj_from_bm("PlungerLaneWall", bm, M["wall"], C_table)
+colliders["lane_gate"] = {"center": gxz((LANE_WALL_X, LANE_TOP_Y + 0.05)), "size": [0.012, 0.045, 0.10]}
 
-# inlane guides: from outer/lane wall down towards the flipper pivots
+# inlane guides: from the side walls down to the flipper pivots
 lp = (PLAY_CX - FLIP_PIVOT_DX, FLIP_PIVOT_Y)
 rp = (PLAY_CX + FLIP_PIVOT_DX, FLIP_PIVOT_Y)
-half = LANE_WALL_X - WALL_T / 2 - PLAY_CX            # half width of playfield
-gap = FLIP_R0 + 0.004                                 # guide ends just outside pivot
+left_x = -INNER_X                       # inner face of left wall
+right_x = LANE_WALL_X - WALL_T / 2      # inner face of lane wall
+gap = FLIP_R0 + 0.004                   # apron walls sit just outside the pivot
+# The guide ends just above the pivot, slightly past its crest, so a ball rolling
+# off the guide lands on the sloped flipper instead of balancing on top of the
+# round pivot (which made it stall there).
+GEND_L = (lp[0] + 0.002, lp[1] + FLIP_R0 + 0.009)
+GEND_R = (rp[0] - 0.002, rp[1] + FLIP_R0 + 0.009)
+def on_guide(p0, p1, x):
+    return (x, p0[1] + (p1[1] - p0[1]) * (x - p0[0]) / (p1[0] - p0[0]))
+AL = on_guide((left_x, GUIDE_TOP_Y), GEND_L, lp[0] - gap)    # apron wall tops
+AR = on_guide((right_x, GUIDE_TOP_Y), GEND_R, rp[0] + gap)
 bm = bmesh.new()
-add_wall(bm, (PLAY_CX - half, -0.30), (lp[0] - gap, lp[1] + 0.012))
-add_wall(bm, (PLAY_CX + half, -0.30), (rp[0] + gap, rp[1] + 0.012))
-# lower apron walls closing the area under the guides (keeps ball out of dead zones)
-add_wall(bm, (lp[0] - gap, lp[1] + 0.012), (lp[0] - gap, -cy_))
-add_wall(bm, (rp[0] + gap, rp[1] + 0.012), (rp[0] + gap, -cy_))
+# (not extended: a box corner poking into the plunger lane caused ghost contacts)
+seg(bm, "inlane", (left_x, GUIDE_TOP_Y), GEND_L, t=0.014, extend=False)
+seg(bm, "inlane", (right_x, GUIDE_TOP_Y), GEND_R, t=0.014, extend=False)
+# apron walls closing the area under the guides
+seg(bm, "inlane", AL, (AL[0], -INNER_Y), t=0.014)
+seg(bm, "inlane", AR, (AR[0], -INNER_Y), t=0.014)
 obj_from_bm("InlaneGuides", bm, M["guide"], C_table)
-
-# labyrinth-style wall segments in the upper playfield (gaps >= 6 cm, ball is 2.7 cm)
-maze = [
-    ((-0.23, 0.26), (-0.23, 0.40)), ((-0.23, 0.40), (-0.15, 0.40)),   # upper-left L
-    ((0.17, 0.26), (0.17, 0.40)),   ((0.17, 0.40), (0.09, 0.40)),     # upper-right L
-    ((-0.07, 0.40), (0.01, 0.40)),                                     # top centre bar
-    ((-0.03, 0.40), (-0.03, 0.34)),                                    # T stem
-    ((-0.23, 0.12), (-0.17, 0.12)),                                    # left stub
-    ((0.17, 0.12), (0.11, 0.12)),                                      # right stub
+# solid pocket fills behind the guides (not rendered; physics only)
+e = 0.006
+POCKET_L = [(left_x, GUIDE_TOP_Y), (left_x, -INNER_Y), (AL[0], -INNER_Y), AL]
+POCKET_R = [(right_x, GUIDE_TOP_Y), (right_x, -INNER_Y), (AR[0], -INNER_Y), AR]
+colliders["pockets"] = [
+    [gxz(p) for p in [(left_x - e, GUIDE_TOP_Y - e), (left_x - e, -INNER_Y - e),
+                      (AL[0] - e, -INNER_Y - e), (AL[0] - e, AL[1] - e)]],
+    [gxz(p) for p in [(right_x, GUIDE_TOP_Y - e), (right_x, -INNER_Y - e),
+                      (AR[0] + e, -INNER_Y - e), (AR[0] + e, AR[1] - e)]],
 ]
+
+# raised apron plates over the dead pockets behind the guides (visual cue that
+# these areas are out of play; physics uses the pocket colliders above)
 bm = bmesh.new()
-for a, b in maze: add_wall(bm, a, b, h=0.04, t=0.01)
+for poly in (POCKET_L, POCKET_R):
+    prism(bm, poly, 0.0, 0.03)
+obj_from_bm("ApronPlates", bm, M["apron"], C_table)
+
+# labyrinth wall segments across the wide upper playfield (all gaps >= 4 cm, ball 2.7 cm)
+c = PLAY_CX
+def X(x):  # x designed for a 1.0 m table -> spread across the actual width
+    return c + (x - c) * SX
+maze_1m = [
+    ((-0.40, 0.14), (-0.40, 0.30)), ((-0.40, 0.30), (-0.29, 0.30)),      # upper-left L
+    ((0.33, 0.14), (0.33, 0.30)),   ((0.33, 0.30), (0.22, 0.30)),        # upper-right L
+    ((c - 0.06, 0.34), (c + 0.06, 0.34)), ((c, 0.34), (c, 0.30)),        # top centre T
+    ((-0.24, 0.10), (-0.24, 0.20)), ((0.19, 0.10), (0.19, 0.20)),        # inner pillars
+    ((-0.44, -0.04), (-0.36, -0.04)), ((0.31, -0.04), (0.39, -0.04)),    # side stubs
+    ((c - 0.20, -0.02), (c - 0.14, 0.02)), ((c + 0.20, -0.02), (c + 0.14, 0.02)),  # mid chevrons
+]
+maze = [((X(a_[0]), a_[1]), (X(b_[0]), b_[1])) for a_, b_ in maze_1m]
+bm = bmesh.new()
+for a_, b_ in maze: seg(bm, "maze", a_, b_, h=0.04, t=0.01)
 obj_from_bm("MazeWalls", bm, M["maze"], C_table)
 
 # placement markers (exported as Node3D in the glb)
 P = {
     "Marker_FlipperLeft":  ((lp[0], lp[1], 0), 0.0),
     "Marker_FlipperRight": ((rp[0], rp[1], 0), math.pi),
-    "Marker_Plunger":      ((LANE_CX, -0.50, 0), 0.0),
-    "Marker_BallSpawn":    ((LANE_CX, -0.50 + BALL_R + 0.002, BALL_R), 0.0),
-    "Marker_Bumper1":      ((PLAY_CX - 0.075, 0.20, 0), 0.0),
-    "Marker_Bumper2":      ((PLAY_CX + 0.075, 0.20, 0), 0.0),
-    "Marker_Bumper3":      ((PLAY_CX, 0.29, 0), 0.0),
-    "Marker_SlingshotLeft":  ((PLAY_CX - 0.16, -0.24, 0), 0.0),
-    "Marker_SlingshotRight": ((PLAY_CX + 0.16, -0.24, 0), 0.0),
-    "Marker_Target1":      ((-0.19, 0.465, 0), 0.0),
-    "Marker_Target2":      ((0.13, 0.465, 0), 0.0),
-    "Marker_Drain":        ((PLAY_CX, -0.51, 0), 0.0),
+    "Marker_Plunger":      ((LANE_CX, -0.44, 0), 0.0),
+    "Marker_BallSpawn":    ((LANE_CX, -0.44 + BALL_R + 0.002, BALL_R), 0.0),
+    "Marker_Bumper1":      ((X(c - 0.09), 0.12, 0), 0.0),
+    "Marker_Bumper2":      ((X(c + 0.09), 0.12, 0), 0.0),
+    "Marker_Bumper3":      ((c, 0.22, 0), 0.0),
+    "Marker_Bumper4":      ((X(c - 0.30), 0.04, 0), 0.0),
+    "Marker_Bumper5":      ((X(c + 0.28), 0.04, 0), 0.0),
+    "Marker_SlingshotLeft":  ((X(c - 0.20), -0.20, 0), 0.0),
+    "Marker_SlingshotRight": ((X(c + 0.20), -0.20, 0), 0.0),
+    "Marker_Target1":      ((X(-0.30), 0.42, 0), 0.0),
+    "Marker_Target2":      ((X(-0.16), 0.42, 0), 0.0),
+    "Marker_Target3":      ((X(0.09), 0.42, 0), 0.0),
+    "Marker_Target4":      ((X(0.23), 0.42, 0), 0.0),
+    "Marker_Drain":        ((c, -0.45, 0), 0.0),
 }
 for n, (loc, rz) in P.items():
     empty(n, loc, C_table, rz)
     x, y, z = loc
     layout[n] = {"godot_position": [round(x, 4), round(z, 4), round(-y, 4)],
                  "godot_rotation_y_deg": round(math.degrees(rz), 1)}
+layout["table"] = {"width": TABLE_W, "length": TABLE_L, "inner_half_x": round(INNER_X, 4),
+                   "inner_half_z": round(INNER_Y, 4), "playfield_center_x": round(PLAY_CX, 4),
+                   "lane_center_x": round(LANE_CX, 4), "lane_wall_x": round(LANE_WALL_X, 4),
+                   "flipper_length": FLIP_LEN, "flipper_tip_gap": FLIP_GAP}
+layout["colliders"] = colliders
 
 # ---------------------------------------------------------------- FLIPPER
 C_flip = collection("flipper")
@@ -220,7 +296,7 @@ obj_from_bm("FlipperPivotCap", bm, M["chrome"], C_flip)
 C_ball = collection("ball")
 bm = bmesh.new()
 bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=10, radius=BALL_R)
-obj_from_bm("Ball", bm, M["chrome"], C_ball, smooth=True)
+obj_from_bm("Ball", bm, M["ball"], C_ball, smooth=True)
 
 # ---------------------------------------------------------------- BUMPER
 C_bump = collection("bumper")
@@ -305,7 +381,7 @@ for fname, coll in EXPORTS.items():
 
 with open(os.path.join(MODELS, "layout.json"), "w") as f:
     json.dump({"units": "metres", "coords": "Godot (Y-up), table.glb origin at playfield centre, surface y=0; "
-               "far/top end of table is -Z, player/flippers at +Z", **layout}, f, indent=2)
+               "far/top end of table is -Z, player/flippers at +Z", **layout}, f, indent=1)
 
 # ---------------------------------------------------------------- preview render (not saved to .blend)
 if PREVIEW:
@@ -319,10 +395,11 @@ if PREVIEW:
             bpy.context.scene.collection.objects.link(n)
     # assembled table
     # flippers shown at their suggested rest angle (tip 30 deg down)
-    dup(C_flip, P["Marker_FlipperLeft"][0], math.radians(-30)); dup(C_flip, P["Marker_FlipperRight"][0], math.pi + math.radians(30))
-    for i in (1, 2, 3): dup(C_bump, P[f"Marker_Bumper{i}"][0])
+    dup(C_flip, P["Marker_FlipperLeft"][0], math.radians(-FLIP_REST_DEG)); dup(C_flip, P["Marker_FlipperRight"][0], math.pi + math.radians(FLIP_REST_DEG))
+    for k in P:
+        if k.startswith("Marker_Bumper"): dup(C_bump, P[k][0])
+        if k.startswith("Marker_Target"): dup(C_tgt, P[k][0])
     dup(C_sl, P["Marker_SlingshotLeft"][0]); dup(C_sr, P["Marker_SlingshotRight"][0])
-    dup(C_tgt, P["Marker_Target1"][0]); dup(C_tgt, P["Marker_Target2"][0])
     dup(C_plng, P["Marker_Plunger"][0]); dup(C_ball, P["Marker_BallSpawn"][0])
     dup(C_ball, (PLAY_CX + 0.02, -0.1, BALL_R)); dup(C_drn, P["Marker_Drain"][0])
     # hide originals except table; line up individual models (scaled x3) beside the table
@@ -330,12 +407,12 @@ if PREVIEW:
         if c is not C_table: c.hide_render = True
     lineup = (C_flip, C_ball, C_bump, C_plng, C_sl, C_sr, C_tgt, C_drn)
     for i, c in enumerate(lineup):            # 2 columns x 4 rows, scaled x2.5
-        x = 0.50 + 0.30 * (i % 2); y = 0.36 - 0.26 * (i // 2)
+        x = 0.72 + 0.30 * (i % 2); y = 0.36 - 0.26 * (i // 2)
         dup(c, (x, y, 0), 0.0, 2.5)
     sc = bpy.context.scene
     cam = bpy.data.objects.new("Cam", bpy.data.cameras.new("Cam"))
     sc.collection.objects.link(cam); sc.camera = cam
-    cam.location = (0.3, -1.35, 1.45)
+    cam.location = (0.35, -1.45, 1.65)
     cam.rotation_euler = (math.radians(45), 0, 0)
     cam.data.lens = 30
     sun = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", 'SUN'))

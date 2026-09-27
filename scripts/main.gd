@@ -112,7 +112,7 @@ func _check_out_of_bounds() -> void:
 	if world.ball == null or not is_instance_valid(world.ball):
 		return
 	var local := world.ball_playfield_position()
-	if local.y < -0.25 or local.z > 0.62:
+	if local.y < -0.25 or local.z > world.table_info("inner_half_z", 0.488) + 0.08:
 		_on_ball_drained()
 
 
@@ -143,7 +143,7 @@ func _run_smoke_test() -> void:
 	await get_tree().create_timer(0.35).timeout
 	var parked := world.ball_playfield_position()
 	report["parked"] = [parked.x, parked.y, parked.z]
-	if parked.x < 0.22:
+	if parked.x < world.table_info("lane_wall_x", 0.445):
 		failures.append("ball left the plunger lane before launch")
 
 	Input.action_press(&"plunger")
@@ -166,6 +166,18 @@ func _run_smoke_test() -> void:
 		world.ball.linear_velocity.z,
 	]
 	var moved_up := launched.z < start.z - 0.20
+	# Let the shot finish: it must leave the plunger lane onto the playfield.
+	var entered := false
+	for i in range(40):
+		await get_tree().create_timer(0.05).timeout
+		var p := world.ball_playfield_position()
+		if p.x < world.table_info("lane_wall_x", 0.445) - 0.02:
+			entered = true
+			report["entered_playfield_at"] = [p.x, p.y, p.z]
+			break
+	report["entered_playfield"] = entered
+	if not entered:
+		failures.append("launched ball never left the plunger lane onto the playfield")
 	report["moved_up_lane"] = moved_up
 	if not moved_up:
 		failures.append(
@@ -175,7 +187,7 @@ func _run_smoke_test() -> void:
 	if world.left_flipper == null or world.right_flipper == null:
 		failures.append("flippers missing")
 	else:
-		if absf(world.left_flipper.position.z - 0.42) > 0.05:
+		if absf(world.left_flipper.position.z - world.marker_position("Marker_FlipperLeft").z) > 0.01:
 			failures.append("left flipper not at player-end marker (z=%.3f)" % world.left_flipper.position.z)
 		var left_rest := world.left_flipper.rotation.y
 		Input.action_press(&"flipper_left")
@@ -224,13 +236,23 @@ func _playfield_ray(from_local: Vector3, to_local: Vector3) -> Dictionary:
 
 
 func _check_inlane_collision(report: Dictionary, failures: PackedStringArray) -> void:
-	# Rays through the visible yellow rails, on the outer third where the old
-	# inverted colliders did not sit.
+	# Rays crossing each visible rail / apron wall must hit a world collider, and
+	# the inlane feeds to the flippers must stay open. Positions derive from the
+	# layout so they follow the table geometry.
+	var lf := world.marker_position("Marker_FlipperLeft")
+	var rf := world.marker_position("Marker_FlipperRight")
+	var ix := world.table_info("inner_half_x", 0.488)
+	var lane_x := world.table_info("lane_wall_x", 0.445)
 	var blockers := [
-		["left_inlane", Vector3(-0.18, 0.02, 0.318), Vector3(-0.30, 0.02, 0.318)],
-		["right_inlane", Vector3(0.12, 0.02, 0.318), Vector3(0.26, 0.02, 0.318)],
-		["left_apron", Vector3(-0.04, 0.02, 0.48), Vector3(-0.20, 0.02, 0.48)],
-		["right_apron", Vector3(-0.01, 0.02, 0.48), Vector3(0.14, 0.02, 0.48)],
+		# horizontal ray at a z halfway down the rail, from the playfield side outwards
+		["left_inlane", Vector3(lf.x - 0.10, 0.02, 0.2), Vector3(-ix - 0.02, 0.02, 0.2)],
+		["right_inlane", Vector3(rf.x + 0.10, 0.02, 0.2), Vector3(lane_x, 0.02, 0.2)],
+		["left_apron", Vector3(lf.x + 0.04, 0.02, lf.z + 0.07), Vector3(lf.x - 0.08, 0.02, lf.z + 0.07)],
+		["right_apron", Vector3(rf.x - 0.04, 0.02, rf.z + 0.07), Vector3(rf.x + 0.08, 0.02, rf.z + 0.07)],
+		# outer walls, lane wall and top wall
+		["left_wall", Vector3(-ix + 0.03, 0.02, -0.2), Vector3(-ix - 0.05, 0.02, -0.2)],
+		["top_wall", Vector3(0.0, 0.02, -0.40), Vector3(0.0, 0.02, -0.55)],
+		["lane_wall", Vector3(lane_x - 0.03, 0.02, 0.1), Vector3(lane_x + 0.02, 0.02, 0.1)],
 	]
 	for spec in blockers:
 		var from_pos: Vector3 = spec[1]
@@ -239,10 +261,9 @@ func _check_inlane_collision(report: Dictionary, failures: PackedStringArray) ->
 		report[String(spec[0]) + "_hit"] = not hit.is_empty()
 		if hit.is_empty():
 			failures.append("%s not blocking a playfield ray" % spec[0])
-	# Inlane feed to the flippers must stay open.
 	var feeds := [
-		["left_feed", Vector3(-0.06, 0.02, 0.34), Vector3(-0.09, 0.02, 0.45)],
-		["right_feed", Vector3(0.01, 0.02, 0.34), Vector3(0.04, 0.02, 0.45)],
+		["left_feed", Vector3(lf.x + 0.04, 0.02, lf.z - 0.05), Vector3(lf.x + 0.02, 0.02, lf.z + 0.04)],
+		["right_feed", Vector3(rf.x - 0.04, 0.02, rf.z - 0.05), Vector3(rf.x - 0.02, 0.02, rf.z + 0.04)],
 	]
 	for spec in feeds:
 		var from_pos: Vector3 = spec[1]
@@ -254,26 +275,58 @@ func _check_inlane_collision(report: Dictionary, failures: PackedStringArray) ->
 
 
 func _check_inlane_ball_block(report: Dictionary, failures: PackedStringArray) -> void:
+	# Fire the ball at max speed into walls / rails and check it never ends up
+	# behind them (anti-tunnelling). Each shot: start, velocity (table-local).
 	if world.ball == null or not is_instance_valid(world.ball):
-		failures.append("no ball for inlane impact test")
+		failures.append("no ball for wall impact test")
 		return
 	world.plunger.bind_ball(null)
-	world.ball.position = Vector3(-0.14, PinballData.BALL_RADIUS, 0.28)
-	world.ball.launch(world.playfield.global_transform.basis * Vector3(-3.2, 0.0, 2.4))
-	await get_tree().create_timer(0.35).timeout
-	if world.ball == null or not is_instance_valid(world.ball):
-		failures.append("ball disappeared during inlane impact test")
-		return
-	var pos := world.ball_playfield_position()
-	report["inlane_impact"] = [pos.x, pos.y, pos.z]
-	var in_left_pocket := pos.x < -0.20 and pos.z > 0.31 and pos.z < 0.55
-	report["inlane_impact_in_pocket"] = in_left_pocket
-	if in_left_pocket:
-		failures.append(
-			"ball passed through left inlane into the side pocket (x=%.3f z=%.3f)" % [pos.x, pos.z]
-		)
-	if pos.y < -0.05 or pos.x < -0.32:
-		failures.append("ball left the table during inlane impact test")
+	var ix := world.table_info("inner_half_x", 0.488)
+	var iz := world.table_info("inner_half_z", 0.488)
+	var lane_x := world.table_info("lane_wall_x", 0.445)
+	var r := PinballData.BALL_RADIUS
+	var pockets: Array[PackedVector2Array] = []
+	var col: Dictionary = world.get_layout().get("colliders", {})
+	for raw in col.get("pockets", []):
+		var poly := PackedVector2Array()
+		for q in raw:
+			poly.append(Vector2(float(q[0]), float(q[1])))
+		pockets.append(poly)
+	var shots := [
+		["left_inlane", Vector3(-0.30, r, 0.05), Vector3(-6.0, 0.0, 8.0)],
+		["right_inlane", Vector3(0.25, r, 0.05), Vector3(6.0, 0.0, 8.0)],
+		["left_wall", Vector3(-0.30, r, -0.20), Vector3(-12.0, 0.0, 0.5)],
+		["lane_wall", Vector3(0.30, r, 0.10), Vector3(12.0, 0.0, 0.5)],
+		["top_wall", Vector3(-0.02, r, -0.30), Vector3(0.3, 0.0, -12.0)],
+	]
+	for shot in shots:
+		world.ball.freeze = false
+		world.ball.position = shot[1]
+		world.ball.linear_velocity = Vector3.ZERO
+		world.ball.launch(world.playfield.global_transform.basis * Vector3(shot[2]))
+		var worst := Vector3.ZERO
+		var escaped := false
+		for i in range(12):
+			await get_tree().physics_frame
+			await get_tree().physics_frame
+			if world.ball == null or not is_instance_valid(world.ball):
+				failures.append("ball disappeared during %s impact test" % shot[0])
+				return
+			var pos := world.ball_playfield_position()
+			var p2 := Vector2(pos.x, pos.z)
+			var out := pos.x < -ix or pos.z < -iz or pos.z > iz or pos.y < -0.02
+			for poly in pockets:
+				out = out or Geometry2D.is_point_in_polygon(p2, poly)
+			if shot[0] == "lane_wall":
+				out = out or pos.x > lane_x
+			if out:
+				escaped = true
+				worst = pos
+				break
+			worst = pos
+		report[String(shot[0]) + "_impact"] = [worst.x, worst.y, worst.z]
+		if escaped:
+			failures.append("ball tunneled through %s (x=%.3f z=%.3f)" % [shot[0], worst.x, worst.z])
 
 
 func _run_screenshot() -> void:

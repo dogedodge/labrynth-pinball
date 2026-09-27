@@ -68,6 +68,8 @@ common/max_physics_steps_per_frame=16
 jolt_physics_3d/collisions/collision_margin_fraction=0.004
 jolt_physics_3d/simulation/velocity_steps=12
 jolt_physics_3d/simulation/position_steps=3
+; Default (0.02 m) is huge next to a 27 mm ball and caused ghost bounces off nearby wall corners.
+jolt_physics_3d/simulation/speculative_contact_distance=0.004
 
 [rendering]
 
