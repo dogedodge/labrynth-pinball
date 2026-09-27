@@ -45,13 +45,13 @@ static func duplicate_surface_material(mesh_instance: MeshInstance3D) -> Materia
 	return dup
 
 
-static func add_convex_collision(body: CollisionObject3D, visual_root: Node) -> void:
+static func add_convex_collision(body: CollisionObject3D, visual_root: Node, simplify := true) -> void:
 	for mesh_instance in find_meshes(visual_root):
 		if mesh_instance.mesh == null:
 			continue
 		var cs := CollisionShape3D.new()
 		cs.name = mesh_instance.name + "Shape"
-		cs.shape = mesh_instance.mesh.create_convex_shape(true, true)
+		cs.shape = mesh_instance.mesh.create_convex_shape(true, simplify)
 		body.add_child(cs)
 		cs.global_transform = mesh_instance.global_transform
 

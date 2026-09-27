@@ -1,5 +1,13 @@
 class_name TouchControls
 extends Control
+## Portrait touch layout (multitouch):
+##   - left / right flipper: the whole left / right half of the screen below the
+##     HUD band is a tap zone (invisible except a faint hint at the bottom edge)
+##   - LAUNCH: round-cornered button bottom-right (right thumb), over the plunger lane
+##   - PAUSE / RESTART: small buttons in the top HUD band
+## Keyboard controls keep working alongside.
+
+const TOP_BAND := 0.075   # matches PinballWorld.FIT_TOP (HUD band above the table)
 
 var left_flipper: VirtualButton
 var right_flipper: VirtualButton
@@ -17,26 +25,34 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-	left_flipper = _add_button(&"flipper_left", "L", Color(0.95, 0.55, 0.12, 0.95), 0.015, 0.48, 0.20, 0.96)
-	right_flipper = _add_button(&"flipper_right", "R", Color(0.95, 0.55, 0.12, 0.95), 0.80, 0.48, 0.985, 0.96)
-	launch = _add_button(&"plunger", "LAUNCH", Color(0.2, 0.75, 0.45, 0.95), 0.80, 0.30, 0.985, 0.46)
-	pause_btn = _add_button(&"pause", "PAUSE", Color(0.7, 0.75, 0.85, 0.9), 0.015, 0.04, 0.13, 0.14)
-	restart_btn = _add_button(&"restart", "RESTART", Color(0.85, 0.35, 0.3, 0.9), 0.14, 0.04, 0.27, 0.14)
+	var flip := Color(0.95, 0.55, 0.12, 0.9)
+	# Zones first: buttons added later win the hit test (launch over the right zone).
+	left_flipper = _add_button(&"flipper_left", "< LEFT FLIPPER", flip, 0.0, TOP_BAND, 0.5, 1.0, 20, true)
+	right_flipper = _add_button(&"flipper_right", "RIGHT FLIPPER >", flip, 0.5, TOP_BAND, 1.0, 1.0, 20, true)
+	launch = _add_button(&"plunger", "LAUNCH", Color(0.2, 0.8, 0.45, 0.95), 0.80, 0.875, 0.99, 0.99, 20)
+	# keep the right zone's hint clear of the launch button
+	right_flipper.hint_anchor = Vector2(0.0, 0.6)
+	left_flipper.hint_anchor = Vector2(0.2, 1.0)
+	pause_btn = _add_button(&"pause", "PAUSE", Color(0.7, 0.75, 0.85, 0.9), 0.015, 0.01, 0.16, 0.062, 15)
+	restart_btn = _add_button(&"restart", "RESTART", Color(0.85, 0.35, 0.3, 0.9), 0.84, 0.01, 0.985, 0.062, 15)
 
 
-func _add_button(action: StringName, text: String, accent: Color, l: float, t: float, r: float, b: float) -> VirtualButton:
+func _add_button(action: StringName, text: String, accent: Color, l: float, t: float, r: float, b: float, font_size := 22, zone := false) -> VirtualButton:
 	var btn := VirtualButton.new()
 	btn.action = action
 	btn.label_text = text
 	btn.accent = accent
+	btn.font_size = font_size
+	btn.zone = zone
 	btn.anchor_left = l
 	btn.anchor_top = t
 	btn.anchor_right = r
 	btn.anchor_bottom = b
-	btn.offset_left = 6
-	btn.offset_top = 6
-	btn.offset_right = -6
-	btn.offset_bottom = -6
+	var pad := 0 if zone else 4
+	btn.offset_left = pad
+	btn.offset_top = pad
+	btn.offset_right = -pad
+	btn.offset_bottom = -pad
 	add_child(btn)
 	_buttons.append(btn)
 	return btn
@@ -51,6 +67,8 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
 		if touch.pressed:
+			if _held.has(touch.index):
+				return
 			var btn := _hit(touch.position)
 			if btn:
 				_held[touch.index] = btn
@@ -62,6 +80,16 @@ func _input(event: InputEvent) -> void:
 				_held.erase(touch.index)
 				_release(btn)
 				get_viewport().set_input_as_handled()
+	elif event is InputEventScreenDrag:
+		# A finger sliding from one flipper zone to the other switches flippers.
+		var drag := event as InputEventScreenDrag
+		if _held.has(drag.index):
+			var cur: VirtualButton = _held[drag.index]
+			var now := _hit(drag.position)
+			if cur.zone and now != null and now.zone and now != cur:
+				_release(cur)
+				_held[drag.index] = now
+				_press(now)
 
 
 func _hit(screen_pos: Vector2) -> VirtualButton:

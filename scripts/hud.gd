@@ -8,20 +8,21 @@ var _balls: Label
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_score = _make_label(42)
-	_score.anchor_left = 0.22
-	_score.anchor_right = 0.78
-	_score.anchor_top = 0.03
-	_score.anchor_bottom = 0.12
+	# Top band above the table (see PinballWorld.FIT_TOP), between pause and restart.
+	_score = _make_label(38)
+	_score.anchor_left = 0.17
+	_score.anchor_right = 0.83
+	_score.anchor_top = 0.0
+	_score.anchor_bottom = 0.05
 	_score.offset_left = 0
 	_score.offset_right = 0
 	_score.offset_top = 0
 	_score.offset_bottom = 0
-	_balls = _make_label(22)
-	_balls.anchor_left = 0.22
-	_balls.anchor_right = 0.78
-	_balls.anchor_top = 0.11
-	_balls.anchor_bottom = 0.18
+	_balls = _make_label(18)
+	_balls.anchor_left = 0.16
+	_balls.anchor_right = 0.84
+	_balls.anchor_top = 0.045
+	_balls.anchor_bottom = 0.074
 	_balls.offset_left = 0
 	_balls.offset_right = 0
 	_balls.offset_top = 0
