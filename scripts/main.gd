@@ -199,6 +199,9 @@ func _run_smoke_test() -> void:
 		if not right_ok:
 			failures.append("right flipper did not rotate to active angle")
 
+	_check_inlane_collision(report, failures)
+	await _check_inlane_ball_block(report, failures)
+
 	if failures.is_empty():
 		print("SMOKE TEST PASSED")
 		print(JSON.stringify(report))
@@ -207,6 +210,70 @@ func _run_smoke_test() -> void:
 		printerr("SMOKE TEST FAILED: ", ", ".join(failures))
 		print(JSON.stringify(report))
 		get_tree().quit(1)
+
+
+func _playfield_ray(from_local: Vector3, to_local: Vector3) -> Dictionary:
+	var space := world.get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(
+		world.playfield.to_global(from_local),
+		world.playfield.to_global(to_local)
+	)
+	query.collision_mask = PinballData.LAYER_WORLD
+	query.collide_with_areas = false
+	return space.intersect_ray(query)
+
+
+func _check_inlane_collision(report: Dictionary, failures: PackedStringArray) -> void:
+	# Rays through the visible yellow rails, on the outer third where the old
+	# inverted colliders did not sit.
+	var blockers := [
+		["left_inlane", Vector3(-0.18, 0.02, 0.318), Vector3(-0.30, 0.02, 0.318)],
+		["right_inlane", Vector3(0.12, 0.02, 0.318), Vector3(0.26, 0.02, 0.318)],
+		["left_apron", Vector3(-0.04, 0.02, 0.48), Vector3(-0.20, 0.02, 0.48)],
+		["right_apron", Vector3(-0.01, 0.02, 0.48), Vector3(0.14, 0.02, 0.48)],
+	]
+	for spec in blockers:
+		var from_pos: Vector3 = spec[1]
+		var to_pos: Vector3 = spec[2]
+		var hit: Dictionary = _playfield_ray(from_pos, to_pos)
+		report[String(spec[0]) + "_hit"] = not hit.is_empty()
+		if hit.is_empty():
+			failures.append("%s not blocking a playfield ray" % spec[0])
+	# Inlane feed to the flippers must stay open.
+	var feeds := [
+		["left_feed", Vector3(-0.06, 0.02, 0.34), Vector3(-0.09, 0.02, 0.45)],
+		["right_feed", Vector3(0.01, 0.02, 0.34), Vector3(0.04, 0.02, 0.45)],
+	]
+	for spec in feeds:
+		var from_pos: Vector3 = spec[1]
+		var to_pos: Vector3 = spec[2]
+		var hit: Dictionary = _playfield_ray(from_pos, to_pos)
+		report[String(spec[0]) + "_clear"] = hit.is_empty()
+		if not hit.is_empty():
+			failures.append("%s path to flipper is blocked" % spec[0])
+
+
+func _check_inlane_ball_block(report: Dictionary, failures: PackedStringArray) -> void:
+	if world.ball == null or not is_instance_valid(world.ball):
+		failures.append("no ball for inlane impact test")
+		return
+	world.plunger.bind_ball(null)
+	world.ball.position = Vector3(-0.14, PinballData.BALL_RADIUS, 0.28)
+	world.ball.launch(world.playfield.global_transform.basis * Vector3(-3.2, 0.0, 2.4))
+	await get_tree().create_timer(0.35).timeout
+	if world.ball == null or not is_instance_valid(world.ball):
+		failures.append("ball disappeared during inlane impact test")
+		return
+	var pos := world.ball_playfield_position()
+	report["inlane_impact"] = [pos.x, pos.y, pos.z]
+	var in_left_pocket := pos.x < -0.20 and pos.z > 0.31 and pos.z < 0.55
+	report["inlane_impact_in_pocket"] = in_left_pocket
+	if in_left_pocket:
+		failures.append(
+			"ball passed through left inlane into the side pocket (x=%.3f z=%.3f)" % [pos.x, pos.z]
+		)
+	if pos.y < -0.05 or pos.x < -0.32:
+		failures.append("ball left the table during inlane impact test")
 
 
 func _run_screenshot() -> void:

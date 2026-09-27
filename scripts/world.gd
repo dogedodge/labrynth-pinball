@@ -64,6 +64,7 @@ func _build() -> void:
 			ModelUtil.add_trimesh_collision(mesh_instance, wall_mat)
 
 	_add_outer_wall_boxes(playfield, wall_mat)
+	_add_inlane_walls(playfield, wall_mat)
 	_add_glass(playfield)
 	_add_lane_gate(playfield)
 
@@ -158,17 +159,10 @@ func _add_outer_wall_boxes(parent: Node3D, phys_mat: PhysicsMaterial) -> void:
 		["WallTopRightChamfer", Vector3(0.255, 0.025, -0.505), Vector3(0.12, 0.05, 0.010)],
 		["WallTopLeftChamfer", Vector3(-0.255, 0.025, -0.505), Vector3(0.12, 0.05, 0.010)],
 		["WallLane", Vector3(0.240, 0.025, 0.132), Vector3(0.008, 0.05, 0.824)],
-		# Inlanes / apron (kept inside the playfield so they cannot pinch the plunger lane).
-		["WallInlaneLeft", Vector3(-0.177, 0.025, 0.354), Vector3(0.20, 0.05, 0.010)],
-		["WallInlaneRight", Vector3(0.153, 0.025, 0.354), Vector3(0.20, 0.05, 0.010)],
-		["WallApronLeft", Vector3(-0.116, 0.025, 0.48), Vector3(0.010, 0.05, 0.14)],
-		["WallApronRight", Vector3(0.067, 0.025, 0.48), Vector3(0.010, 0.05, 0.14)],
 	]
 	var chamfer_yaw := {
 		"WallTopRightChamfer": deg_to_rad(-45),
 		"WallTopLeftChamfer": deg_to_rad(45),
-		"WallInlaneLeft": deg_to_rad(32),
-		"WallInlaneRight": deg_to_rad(-32),
 	}
 	for spec in walls:
 		var body := StaticBody3D.new()
@@ -185,6 +179,92 @@ func _add_outer_wall_boxes(parent: Node3D, phys_mat: PhysicsMaterial) -> void:
 		if chamfer_yaw.has(body.name):
 			cs.rotation.y = chamfer_yaw[body.name]
 		body.add_child(cs)
+
+
+func _add_inlane_walls(parent: Node3D, phys_mat: PhysicsMaterial) -> void:
+	# Endpoints match tools/blender/generate_models.py InlaneGuides (Godot XZ).
+	# Earlier primitives used swapped yaw, so they sat on the opposite diagonal
+	# from the visible yellow guides and the ball could walk through them.
+	_add_wall_segment(parent, phys_mat, "WallInlaneLeft", Vector3(-0.288, 0.0, 0.30), Vector3(-0.1155, 0.0, 0.408))
+	_add_wall_segment(parent, phys_mat, "WallInlaneRight", Vector3(0.239, 0.0, 0.30), Vector3(0.0665, 0.0, 0.408))
+	_add_wall_segment(parent, phys_mat, "WallApronLeft", Vector3(-0.1155, 0.0, 0.408), Vector3(-0.1155, 0.0, 0.544))
+	_add_wall_segment(parent, phys_mat, "WallApronRight", Vector3(0.0665, 0.0, 0.408), Vector3(0.0665, 0.0, 0.544))
+	# Solid fills on the pocket side of the rails. A 12 m/s ball moves ~67 mm per
+	# physics tick, so a thin wall alone can still be tunneled; the volume cannot.
+	_add_pocket_fill(
+		parent,
+		phys_mat,
+		"PocketLeft",
+		[
+			Vector2(-0.294, 0.298),
+			Vector2(-0.294, 0.548),
+			Vector2(-0.122, 0.548),
+			Vector2(-0.122, 0.414),
+		]
+	)
+	_add_pocket_fill(
+		parent,
+		phys_mat,
+		"PocketRight",
+		[
+			Vector2(0.244, 0.298),
+			Vector2(0.244, 0.548),
+			Vector2(0.073, 0.548),
+			Vector2(0.073, 0.414),
+		]
+	)
+
+
+func _add_wall_segment(
+	parent: Node3D,
+	phys_mat: PhysicsMaterial,
+	seg_name: String,
+	p0: Vector3,
+	p1: Vector3,
+	thickness := 0.014,
+	height := 0.05
+) -> void:
+	var delta := Vector3(p1.x - p0.x, 0.0, p1.z - p0.z)
+	var length := delta.length() + thickness
+	var mid := (p0 + p1) * 0.5
+	var body := StaticBody3D.new()
+	body.name = seg_name
+	body.physics_material_override = phys_mat
+	body.collision_layer = PinballData.LAYER_WORLD
+	body.collision_mask = PinballData.LAYER_BALL
+	parent.add_child(body)
+	var box := BoxShape3D.new()
+	box.size = Vector3(length, height, thickness)
+	var cs := CollisionShape3D.new()
+	cs.shape = box
+	cs.position = Vector3(mid.x, height * 0.5, mid.z)
+	cs.rotation.y = atan2(-delta.z, delta.x)
+	body.add_child(cs)
+
+
+func _add_pocket_fill(
+	parent: Node3D,
+	phys_mat: PhysicsMaterial,
+	fill_name: String,
+	pts_xz: Array,
+	height := 0.05
+) -> void:
+	var points := PackedVector3Array()
+	for raw in pts_xz:
+		var p: Vector2 = raw
+		points.append(Vector3(p.x, 0.0, p.y))
+		points.append(Vector3(p.x, height, p.y))
+	var body := StaticBody3D.new()
+	body.name = fill_name
+	body.physics_material_override = phys_mat
+	body.collision_layer = PinballData.LAYER_WORLD
+	body.collision_mask = PinballData.LAYER_BALL
+	parent.add_child(body)
+	var shape := ConvexPolygonShape3D.new()
+	shape.points = points
+	var cs := CollisionShape3D.new()
+	cs.shape = shape
+	body.add_child(cs)
 
 
 func _add_glass(parent: Node3D) -> void:
