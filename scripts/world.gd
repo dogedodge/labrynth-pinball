@@ -69,6 +69,10 @@ func _build() -> void:
 	for pts in col.get("pockets", []):
 		pocket_i += 1
 		_add_pocket_fill(playfield, wall_mat, "Pocket%d" % pocket_i, _vec2_array(pts))
+	var post_i := 0
+	for post in col.get("posts", []):
+		post_i += 1
+		_add_post(playfield, wall_mat, "Post%d" % post_i, post)
 	_add_glass(playfield, float(col.get("glass_height", 0.12)))
 	_add_lane_gate(playfield, col.get("lane_gate", {}))
 
@@ -126,11 +130,20 @@ func _build() -> void:
 		target.position = marker_position(marker)
 		playfield.add_child(target)
 
-	drain = PinballDrain.new()
-	drain.name = "Drain"
-	drain.position = marker_position("Marker_Drain")
-	playfield.add_child(drain)
-	drain.ball_drained.connect(func() -> void: ball_drained.emit())
+	# Centre drain (below the flippers) plus one drain at the bottom of each outlane.
+	var drains: Dictionary = _layout.get("drains", {"Marker_Drain": {}})
+	for marker in drains.keys():
+		var spec: Dictionary = drains[marker]
+		var d := PinballDrain.new()
+		d.name = String(marker).trim_prefix("Marker_")
+		var sz: Array = spec.get("size", [0.22, 0.04, 0.07])
+		d.size = Vector3(float(sz[0]), float(sz[1]), float(sz[2]))
+		d.show_visual = bool(spec.get("visual", true))
+		d.position = marker_position(String(marker))
+		playfield.add_child(d)
+		d.ball_drained.connect(func() -> void: ball_drained.emit())
+		if marker == "Marker_Drain":
+			drain = d
 
 	_add_lights()
 	_add_camera()
@@ -256,6 +269,18 @@ func _add_pocket_fill(
 	shape.points = points
 	var cs := CollisionShape3D.new()
 	cs.shape = shape
+	body.add_child(cs)
+
+
+func _add_post(parent: Node3D, phys_mat: PhysicsMaterial, post_name: String, spec: Dictionary) -> void:
+	var body := _new_static(parent, post_name, phys_mat)
+	var c: Array = spec["center"]
+	var cyl := CylinderShape3D.new()
+	cyl.radius = float(spec.get("r", 0.008))
+	cyl.height = float(spec.get("h", 0.05))
+	var cs := CollisionShape3D.new()
+	cs.shape = cyl
+	cs.position = Vector3(float(c[0]), cyl.height * 0.5, float(c[1]))
 	body.add_child(cs)
 
 

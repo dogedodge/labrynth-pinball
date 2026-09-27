@@ -22,13 +22,17 @@ git lfs pull
 godot --path .          # or open this folder in the Godot editor and press Play
 ```
 
-Headless import / smoke test (launches the ball up the plunger lane and checks flipper rotation):
+Headless import / smoke test (launches the ball up the plunger lane, checks flipper rotation, max-speed wall shots, slingshot rest test, and inlane/outlane roll-through):
 
 ```sh
 godot --headless --path . --import
 godot --headless --path . -- --smoke-test
 godot --headless --path . -s tools/rest_grid_test.gd   # no spot on the table where a ball can come to rest
 # or everything at once: tools/verify.sh
+# diagnostic renders (needs a display, e.g. xvfb-run): top-down ortho of the lower half / slingshot close-up
+# with the rubber in magenta and cyan kick-direction arrows
+godot --path . -s tools/diag_render.gd -- --mode=top --out=/tmp/top.png
+godot --path . -s tools/diag_render.gd -- --mode=close --side=left --out=/tmp/close.png
 ```
 
 Capture a PNG of the running game (writes `docs/gameplay.png` by default):
@@ -54,7 +58,7 @@ Keyboard and on-screen buttons both use the same Input Map actions, so they can 
 - Wide 1.16 m × 1.00 m labyrinth table: 5 pop bumpers, 4 stand-up targets, 2 slingshots, 13 maze wall segments.
 - 3 balls per game. The ball starts in the plunger lane; charge and release to launch.
 - Pop bumpers **100**, slingshots **10**, stand-up targets **500**.
-- Drain between the flippers loses a ball. After the last ball, Game Over — press Restart.
+- Drain between the flippers, or down either outlane, loses a ball. After the last ball, Game Over — press Restart.
 - There is no extra ball / ball-save in this MVP.
 
 ## Project structure
@@ -96,14 +100,14 @@ table: 1.16 m wide × 1.00 m long** (widened from 0.60 × 1.10 so it fills a 16:
 
 | File | Size (x × y × z, m) | Origin / pivot | Notes |
 |---|---|---|---|
-| `table.glb` | 1.16 × 0.07 × 1.00 | centre of the playfield **surface** (floor top, y=0) | Child meshes: `Floor` (0.02 m thick, below y=0), `OuterWalls` (0.05 m high, 12 mm thick, 0.15 m chamfered top corners), `PlungerLaneWall`, `InlaneGuides` (long angled guides + apron walls), `ApronPlates` (raised dark plates marking the dead pockets behind the guides), `SlingDeflectors` (walls from the slingshot tops to the side walls), `MazeWalls` (13 labyrinth segments, 0.04 m high; no horizontal ledges or flat caps a ball could rest on). Also contains `Marker_*` Node3D placement markers (see below). |
+| `table.glb` | 1.16 × 0.07 × 1.00 | centre of the playfield **surface** (floor top, y=0) | Child meshes: `Floor` (0.02 m thick, below y=0), `OuterWalls` (0.05 m high, 12 mm thick, 0.15 m chamfered top corners), `PlungerLaneWall`, `LowerWalls` (30° shoulders from the side walls down to the lower side walls = outer outlane walls), `InlaneGuides` (inlane guide rails with a round post on top, angled to end just above each flipper pivot, outlane inner walls and apron walls), `DeadBlocks` (raised solid blocks in the bottom corners and under the angled guides — no open pockets), `MazeWalls` (13 labyrinth segments, 0.04 m high; no horizontal ledges or flat caps a ball could rest on). Also contains `Marker_*` Node3D placement markers (see below). |
 | `flipper.glb` | 0.108 × 0.029 × 0.029 | **pivot axis** centre, at floor level | Bat points along **+X** (length **0.085 m** pivot→tip centre, pivot radius 13 mm, tip radius 7 mm, height 25 mm). Use as **left** flipper directly; for the **right** flipper rotate 180° about Y. Angles: left rest `−30°`, up `+30°`; right rest `210°`, up `150°`. Tip gap at rest: **33 mm** (ball 27 mm). |
 | `ball.glb` | Ø 0.027 | sphere centre | Radius **0.0135 m**. Light, partly metallic steel so it stays visible without an environment map. |
 | `bumper.glb` | Ø 0.06 × 0.043 | base centre at floor level (y=0) | Round pop bumper: dark base, red skirt, yellow emissive cap. |
 | `plunger.glb` | 0.03 × 0.022 × 0.097 | centre of the plunger head's **front face**, floor level | Head faces **−Z** (up the lane); rod + knob extend toward +Z past the bottom wall (intended). |
-| `slingshot_left.glb` / `slingshot_right.glb` | 0.0944 × 0.035 × 0.1312 | triangle centroid at floor level | Classic slingshot triangle A-B-D generated from the table layout: back edge A-D lies flush on the inlane guide, bottom point A just above the flipper, top point B up/outward; the red rubber **kicking face A-B** (0.16 m, 55°) faces the table centre. A deflector wall runs from B up to the side wall and the space behind is solid, so there is no gap or pocket. Kick direction (perpendicular to A-B, inward/up) is in `layout.json` → `slingshots`. Separate mirrored meshes. |
+| `slingshot_left.glb` / `slingshot_right.glb` | 0.1477 × 0.035 × 0.1796 | triangle centroid at floor level | Real-pinball slingshot triangle sitting above the flipper, inside the inlane: outer edge vertical alongside the inlane (34 mm from the guide), bottom edge parallel to the angled inlane guide / flipper, and the long red rubber **kicking face** (hypotenuse, 0.229 m) facing the table centre, sloping from just above the flipper tip up and outward. Kick direction (perpendicular to the rubber, inward/up: left (0.777, 0, −0.630), right mirrored) and the triangle edges are in `layout.json` → `slingshots`. Separate, exactly mirrored meshes. |
 | `target.glb` | 0.03 × 0.035 × 0.0095 | base centre at floor level | Stand-up target; face points toward the player (+Z). |
-| `drain.glb` | 0.1482 × 0.015 × 0.004 | centre of lip, floor level | Decorative lip between the apron walls below the flippers; the drain Area3D sits here. |
+| `drain.glb` | 0.1482 × 0.015 × 0.004 | centre of lip, floor level | Decorative lip between the apron walls below the flippers; the centre drain Area3D sits here. The two outlanes have their own (invisible) drain Area3Ds at `Marker_DrainOutlaneLeft/Right`. |
 
 All materials are simple Principled BSDF colours (no textures). Low poly.
 
@@ -118,19 +122,25 @@ target per `Marker_Bumper*` / `Marker_Target*` entry, so adding markers in the g
 | Marker_FlipperRight | (0.0726, 0, 0.38) | 180° |
 | Marker_Plunger | (0.5495, 0, 0.44) | – |
 | Marker_BallSpawn | (0.5495, 0.0135, 0.4245) | – |
-| Marker_Bumper1…5 | (−0.1289, 0, −0.12) / (0.0799, 0, −0.12) / (−0.0245, 0, −0.22) / (−0.3725, 0, −0.04) / (0.3003, 0, −0.04) | – |
-| Marker_SlingshotLeft / Right (triangle centroid) | (−0.2508, 0, 0.2519) / (0.2018, 0, 0.2519) | – |
+| Marker_Bumper1…5 | (−0.1289, 0, −0.12) / (0.0799, 0, −0.12) / (−0.0245, 0, −0.22) / (−0.3725, 0, −0.07) / (0.3003, 0, −0.07) | – |
+| Marker_SlingshotLeft / Right (triangle centroid) | (−0.1905, 0, 0.2387) / (0.1415, 0, 0.2387) | – |
 | Marker_Target1…4 (back flush on the top wall) | (−0.3441, 0, −0.481) / (−0.1817, 0, −0.481) / (0.1083, 0, −0.481) / (0.2707, 0, −0.481) | – |
 | Marker_Drain | (−0.0245, 0, 0.45) | – |
+| Marker_DrainOutlaneLeft / Right | (−0.3005, 0, 0.45) / (0.2515, 0, 0.45) | – |
 
 Playfield centre line (between the flippers) is x = -0.0245; plunger lane centre x = 0.5495 (lane wall at x = 0.525).
 A ball launched up the lane hits the chamfered top-right corner and is deflected left across the top.
 
+Lower playfield (each side, from the wall inward, mirrored about x = −0.0245): lower side wall at ±0.30 from centre →
+**outlane** (36 mm) → **inlane guide rail** (10 mm, post on top at z = 0.10, bends at z = 0.26 and angles down to just above the
+flipper pivot) → **inlane** (34 mm) → **slingshot** above the flipper. `layout.json` → `lanes` has the inlane/outlane
+centreline paths, guide and lower-wall x; `drains` has the drain sizes.
+
 ### Colliders come from `layout.json`
 
 `generate_models.py` also writes a `colliders` section to `layout.json` — the floor box, every wall
-segment (outer walls, lane splitter, inlane guides, apron walls, maze), the solid pocket fills behind
-the guides and slingshots, the slingshot kick directions, the glass height and the lane gate — computed from the same numbers as the meshes.
+segment (outer walls, lane splitter, shoulders, lower walls, inlane guides, outlane walls, apron walls, maze), the round
+guide posts (`posts`), the solid dead-area fills, the slingshot kick directions, the glass height and the lane gate — computed from the same numbers as the meshes.
 `scripts/world.gd` builds primitive `BoxShape3D` / `ConvexPolygonShape3D` colliders from it, so the
 physics always matches the regenerated table. Outer-wall colliders are 4 cm thick (growing outward)
 to resist tunnelling.
